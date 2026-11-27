@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from flask import current_app
 
 from models import Order, OrderProof, db
+from utils.production_stages import DONE_STATUSES
 
 REMINDER_AFTER_DAYS = 2
 HOLD_STAGES = ('ready_to_press', 'pressed', 'packaged_ready')       # an order waiting on a proof stays before pressing
@@ -47,14 +48,14 @@ def waiting_order_ids():
 
 def waiting_proofs():
     return (OrderProof.query.join(Order, Order.id == OrderProof.order_id)
-            .filter(OrderProof.status == 'waiting', Order.status != 'cancelled')
+            .filter(OrderProof.status == 'waiting', ~Order.status.in_(DONE_STATUSES))       # a finished order is never nagged about
             .order_by(OrderProof.sent_at).all())
 
 
 def changes_proofs():
     """Proofs where the customer asked for changes and no newer proof has been sent."""
     rows = (OrderProof.query.join(Order, Order.id == OrderProof.order_id)
-            .filter(OrderProof.status == 'changes', Order.status != 'cancelled').order_by(OrderProof.responded_at).all())
+            .filter(OrderProof.status == 'changes', ~Order.status.in_(DONE_STATUSES)).order_by(OrderProof.responded_at).all())
     return [p for p in rows if latest(p.order_id).id == p.id]
 
 
@@ -108,7 +109,7 @@ def send_proof(order, message=''):
                        message=(message or '').strip()[:500] or None, sent_at=datetime.utcnow())
     db.session.add(proof)
     db.session.commit()
-    _email_proof(order, proof)
+    proof.emailed = bool(_email_proof(order, proof))       # False when mail is not set up, so the page can say so
     return proof
 
 

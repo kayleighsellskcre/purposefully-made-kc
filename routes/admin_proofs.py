@@ -27,11 +27,16 @@ def order_proof(order_id):
     current = P.latest(order.id)
     try:
         if action == 'send':
-            P.send_proof(order, request.form.get('message', ''))
-            flash(f'Proof sent to {order.email}. The order now shows Waiting on approval.', 'success')
+            sent = P.send_proof(order, request.form.get('message', ''))
+            if sent.emailed:
+                flash(f'Proof sent to {order.email}. The order now shows Waiting on approval.', 'success')
+            else:
+                flash('The proof is saved, but the email could not be sent. Use "Email the link again" once email is working.', 'error')
         elif action == 'resend' and current is not None:
-            P.resend(current)
-            flash('The proof link was emailed again.', 'success')
+            if P.resend(current):
+                flash('The proof link was emailed again.', 'success')
+            else:
+                flash('The email could not be sent. Check that email is set up.', 'error')
         elif action == 'approve' and current is not None and current.status == 'waiting':
             P.approve(current, by='shop')
             flash('Marked as approved. The order can go to the press.', 'success')

@@ -166,3 +166,14 @@ def test_tracking_points_a_waiting_customer_to_their_proof(app, seed):
 
 def test_the_proof_admin_pages_are_closed_to_guests(guest):
     assert guest.get('/admin/operations/proofs').status_code in (301, 302, 303, 401, 403, 404)
+
+
+def test_a_finished_order_is_not_nagged_or_listed(app, seed, outbox):
+    def go():
+        o = _order('PRF13')
+        P.send_proof(o)
+        o.status = 'picked_up'
+        db.session.commit()
+        assert P.waiting_proofs() == [] and P.run_reminders(datetime.utcnow() + timedelta(days=5)) == 0
+    _in_db(app, go)
+    assert len(outbox) == 1
