@@ -4,8 +4,10 @@ Taken from each style's official SanMar "Spec Sheet + Measurements" page on Nov 
 chest (or bust) across the front one inch below the armhole, body length, and sleeve length. Used by
 utils/size_charts.py when a product's style is not at S&S. A product that already has a chart is left alone.
 
-Left out on purpose: BC3787 (a sweatshort: waist and inseam, not chest and length), STTU169 (SanMar sells that tee as
-SXU001 and the owner still has to confirm it is the same shirt), and BC3945Y, G64500, STSW013, STTU755 (not on SanMar).
+STTU169 is Stanley/Stella Creator 2.0, which SanMar sells as SXU001 (the owner confirmed it is the same shirt).
+
+Left out on purpose: BC3787 (a sweatshort: waist and inseam, not chest and length), and BC3945Y, G64500, STSW013,
+STTU755 (not on SanMar).
 """
 from __future__ import annotations
 
@@ -37,6 +39,8 @@ CHARTS = {
               '27.25 28.25 29.25 30.25 31.25 32.25 33.25 33.75 34.25', '34.25 35 35.75 36.5 37.25 38 38.75 38.75 38.75'),
     'LST350': (_W, '18 19 20 21.5 23 24.5 26.5 28.5', '25 25.5 26 27 28 29 29.5 30', '14 14.5 15 15.75 16.5 17.25 18 18.75'),
     'ST254': (_A, '20.5 22 23.5 25 26.5 28 30 32', '27 28 29 30 31 32 32.5 33', '34.75 35.5 36.25 37 37.75 38.5 39.25 40'),
+    'STTU169': (['XXS', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'], '18 18.625 19.5 21 22.625 24.625 26.5 28.5 30.5 32.5',
+                '26.75 27.5 28.375 29.125 30 31.125 32 33 33.75 34.75', '17.125 17.5 18 18.5 19 19.75 20.5 21.125 21.75 22.25'),
     'ST350': (_6, '18.5 20 21.5 23 24.5 26 28 30 32 34', '27 28 29 30 31 32 32.5 33 33.5 34',
               '17.75 18.5 19.25 20 20.75 21.5 22.25 23 23.5 24'),
 }
