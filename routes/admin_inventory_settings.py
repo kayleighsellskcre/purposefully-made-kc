@@ -239,6 +239,13 @@ def site_settings():
                 flash(f'Saved. Orders picked up or shipped from now on earn {pct:g}%.', 'success')
             except ValueError:
                 flash('Enter a percent from 0 to 20.', 'error')
+        elif section == 'print_sizes':
+            from utils import print_scale as PSC
+            try:
+                PSC.save_adjustments(request.form.get('medium_adjust'), request.form.get('oversized_adjust'))
+                flash('Saved. New carts use these print size prices.', 'success')
+            except (TypeError, ValueError):
+                flash('Enter dollar amounts like -1 or 6.', 'error')
         elif section == 'shipping':
             raw = (request.form.get('free_shipping_min') or '').strip().lstrip('$')
             try:
@@ -314,7 +321,17 @@ def site_settings():
         return redirect(url_for('admin.site_settings'))
     from routes.main import _owner
     from models import Coupon
+    from utils import print_scale as PSC
+    from utils import print_sizes as PSZ
+    from utils.order_costs import get_dtf_costs
+    rate = get_dtf_costs().get('dtf_per_sq_in', 0.05)
+    size_rows = []
+    for key, label in PSC.SCALES:
+        w = PSZ.front_transfer_size('M', None, 'center_back', 1, 1.2, scale=key)
+        size_rows.append({'key': key, 'label': label, 'hint': PSC.HINTS[key], 'width': w['width_display'], 'height': w['height_display'],
+                          'cost': round(w['width'] * w['height'] * rate, 2)})
     return render_template('admin/operations/site_settings.html',
+                           print_size_rows=size_rows, print_adjust=PSC.adjustments(),
                            business_days=ready_date.get_business_days(),
                            preview=ready_date.format_day(ready_date.ready_by()),
                            min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS,

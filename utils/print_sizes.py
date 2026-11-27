@@ -521,18 +521,28 @@ def height_from_width(width, aspect_w, aspect_h):
     return float(width) * (float(aspect_h) / float(aspect_w))
 
 
-def front_transfer_size(size, product=None, placement='center_chest', aspect_w=None, aspect_h=None):
-    """Assigned front/standard transfer. Ordered by WIDTH from the chart."""
+def front_transfer_size(size, product=None, placement='center_chest', aspect_w=None, aspect_h=None, scale=None):
+    """Assigned front/standard transfer. Ordered by WIDTH from the chart.
+
+    `scale` is Medium, Standard or Oversized (utils/print_scale.py). Standard, or none, is the chart width.
+    """
+    from utils import print_scale as _ps
+    scale = _ps.effective(scale, product, size, placement) if _ps.applies_to(placement) else _ps.DEFAULT_SCALE
     chart_width = get_print_width_for_size(size, product)
     if chart_width is None:
         chart_width = 7.5 if classify_age(product, size) == 'youth' else 10.0
-    width = chart_width * placement_width_factor(placement)
+    if scale == 'oversized':
+        chart_width = chart_width_for_size(size, product) or chart_width      # a big print is not held back by the hoodie pocket rule
+    width = chart_width * placement_width_factor(placement) * _ps.WIDTH_FACTOR[scale]
     if aspect_w and aspect_h:
         height = height_from_width(width, aspect_w, aspect_h)
     else:
         height = width
     max_h = safe_print_height(product, size)
     max_w = safe_print_width(size, product, placement)
+    if scale == 'oversized':
+        max_h = max(max_h, _ps.OVERSIZED_SAFE_HEIGHT_ADULT)
+        max_w = max_w * _ps.WIDTH_FACTOR['oversized']
     exceeds = bool(width > max_w + 0.001 or height > max_h + 0.001)
     return {
         'order_by': 'WIDTH',
@@ -543,6 +553,7 @@ def front_transfer_size(size, product=None, placement='center_chest', aspect_w=N
         'exceeds_safe_area': exceeds,
         'safe_width': max_w,
         'safe_height': max_h,
+        'scale': scale,
     }
 
 
@@ -809,6 +820,7 @@ def build_item_production(
     measured_name_width=None,
     measured_number_width=None,
     garment_style=None,
+    print_scale=None,
 ):
     """Full production snapshot stored on the cart item and order line."""
     age = classify_age(product, size)
@@ -826,7 +838,7 @@ def build_item_production(
     }
 
     if has_front and placement != 'center_back':
-        front = front_transfer_size(size, product, placement or 'center_chest', aspect_w, aspect_h)
+        front = front_transfer_size(size, product, placement or 'center_chest', aspect_w, aspect_h, scale=print_scale)
         payload['front'] = {
             'kind': 'standard',
             'design_name': design_name,
@@ -843,10 +855,11 @@ def build_item_production(
             'width_display': front['width_display'],
             'height_display': front['height_display'],
             'exceeds_safe_area': front['exceeds_safe_area'],
+            'print_scale': front['scale'],
             'quantity': qty,
         }
     elif has_front and placement == 'center_back' and not (back_name or back_number):
-        front = front_transfer_size(size, product, 'center_back', aspect_w, aspect_h)
+        front = front_transfer_size(size, product, 'center_back', aspect_w, aspect_h, scale=print_scale)
         payload['front'] = {
             'kind': 'standard',
             'design_name': design_name,
@@ -863,6 +876,7 @@ def build_item_production(
             'width_display': front['width_display'],
             'height_display': front['height_display'],
             'exceeds_safe_area': front['exceeds_safe_area'],
+            'print_scale': front['scale'],
             'quantity': qty,
         }
 

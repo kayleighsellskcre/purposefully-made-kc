@@ -51,6 +51,7 @@ def calculate_unit_price(
     back_design_parts=None,
     is_blank=False,
     design_fee=0.0,
+    print_scale=None,
 ):
     """Price for one garment, before quantity.
 
@@ -65,6 +66,11 @@ def calculate_unit_price(
         price -= SMALL_LOGO_DISCOUNT
 
     price += size_surcharge(product, size)
+
+    # Medium / Oversized print: the owner's price change (Site Settings). Chest logos and standard prints change nothing.
+    from utils.print_scale import price_adjustment
+    if not is_blank:
+        price += price_adjustment(print_scale, placement, product, size)
 
     if has_back_design:
         price += (
@@ -157,4 +163,5 @@ def price_cart_item(item, product, design=None):
         back_design_parts=back_design_parts,
         is_blank=is_blank,
         design_fee=design_fee,
+        print_scale=item.get('print_scale'),
     )

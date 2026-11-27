@@ -447,6 +447,10 @@ def add():
     # request would otherwise set its own price. We only compare the two so a
     # genuine drift between the JS rules and utils/pricing.py gets logged.
     from utils.pricing import calculate_unit_price
+    from utils.print_scale import effective as _effective_scale
+
+    # Medium / Standard / Oversized print. A size that does not fit this garment quietly becomes Standard.
+    print_scale = _effective_scale(None if collection else data.get('print_scale'), product, size, placement)   # group stores keep one standard print
 
     design_fee = 0.0
     if design_id:
@@ -466,6 +470,7 @@ def add():
         ),
         is_blank=is_blank,
         design_fee=design_fee,
+        print_scale=print_scale,
     )
 
     if unit_price_override is not None and abs(unit_price_override - unit_price) > 0.01:
@@ -558,6 +563,7 @@ def add():
         customer_name=customer_name,
         measured_name_width=measured_name_w,
         measured_number_width=measured_number_w,
+        print_scale=print_scale,
     )
 
     if back_design_meta and transfer_production.get('back'):
@@ -610,6 +616,7 @@ def add():
         'design_id': design_id,
         'design_url': design_url,
         'placement': placement,
+        'print_scale': print_scale,
         'back_design_url': back_design_url,
         'back_design_kind': back_design_kind,
         'back_design_meta': back_design_meta,
@@ -670,6 +677,7 @@ def add():
             item['color'] == color and
             item.get('design_id') == design_id and
             item.get('placement') == placement and
+            (item.get('print_scale') or 'standard') == print_scale and
             item.get('back_design_url') == back_design_url and
             item.get('back_design_meta') == back_design_meta and
             item.get('catalog_section') == catalog_section and

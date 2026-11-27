@@ -5,6 +5,26 @@
 <h1 class="ops-title">Site Settings</h1>
 <p class="ops-subtitle">Small things you can change yourself.</p>
 
+<div class="ops-card" style="max-width:760px;margin-bottom:1rem;">
+    <h2>Print sizes</h2>
+    <p>Customers choose Medium, Standard or Oversized for the main print on the front or back. Chest logos stay as they are. Set what each size adds to the price. A minus takes money off.</p>
+    <table class="bk-table" style="margin:0.75rem 0;">
+        <thead><tr><th>Size</th><th>Adult M, about</th><th>Your transfer cost</th></tr></thead>
+        <tbody>
+            {% for r in print_size_rows %}<tr><td><strong>{{ r.label }}</strong><br><small>{{ r.hint }}</small></td><td>{{ r.width }}&Prime; wide &times; {{ r.height }}&Prime; tall</td><td>${{ '%.2f'|format(r.cost) }}</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    <form method="post" style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="section" value="print_sizes">
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Medium ($)
+            <input type="number" name="medium_adjust" value="{{ '%.2f'|format(print_adjust.medium) }}" step="0.25" style="width:8rem;"></label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Oversized ($)
+            <input type="number" name="oversized_adjust" value="{{ '%.2f'|format(print_adjust.oversized) }}" step="0.25" style="width:8rem;"></label>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+    <p class="bk-muted" style="margin-top:0.5rem;">Standard is the regular price. Oversized is only offered on adult tees, sweatshirts and hoodie backs.</p>
+</div>
 <div class="ops-card" style="max-width:600px;margin-bottom:1rem;">
     <h2>Free shipping</h2>
     <p>Shipped orders of this much or more (after any promo code) get free shipping. Customers see "Add $X more for free shipping" as they get close. Leave blank to turn it off. Today shipping is a flat rate.</p>
