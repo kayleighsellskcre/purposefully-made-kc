@@ -320,7 +320,9 @@ def fill_size_charts():
     """Fill each product's own size chart from the manufacturer's measurements. Never replaces a chart already there."""
     from utils.size_charts import start_fill_thread
 
-    start_fill_thread(current_app._get_current_object())
+    if not start_fill_thread(current_app._get_current_object()):
+        flash('Size charts are already being filled in. Check your inbox in a minute.', 'info')
+        return redirect(url_for('admin.products'))
     flash('Filling in size charts from the manufacturer measurements. Styles that already have a chart are left alone. '
           'A note will appear in your inbox in a minute or two with the result.', 'success')
     return redirect(url_for('admin.products'))

@@ -125,9 +125,16 @@ def fill_size_charts(dry_run=False, force=False, say=None):
     return {'saved': saved, 'skipped': skipped, 'missing': missing}
 
 
+import threading
+_running = threading.Lock()
+
+
 def start_fill_thread(app, force=False):
     """Run it in the background so the page does not wait. The result lands in the admin inbox when it is done."""
     import threading
+
+    if not _running.acquire(blocking=False):
+        return False                                   # already filling in: a second press does nothing
 
     def work():
         with app.app_context():
@@ -148,5 +155,8 @@ def start_fill_thread(app, force=False):
                                     url='/admin/products')
             except Exception:
                 app.logger.exception('size chart notification failed')
+            finally:
+                _running.release()
 
     threading.Thread(target=work, daemon=True).start()
+    return True
