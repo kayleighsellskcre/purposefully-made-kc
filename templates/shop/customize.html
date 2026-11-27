@@ -581,6 +581,9 @@
     color: #fff;
     box-shadow: 0 4px 12px rgba(184, 124, 111, 0.3);
 }
+.back-design-tab { line-height: 1.2; }
+.back-design-tab .tab-sub { display: block; margin-top: 0.15rem; font-size: 0.68rem; font-weight: 500; letter-spacing: 0.02em; text-transform: none; opacity: 0.85; }
+.back-design-tab[hidden] { display: none; }
 .back-design-tab.active {
     background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
     color: #fff;
@@ -2592,16 +2595,18 @@
                         <h4 style="margin-bottom: 0.75rem;">Back Design</h4>
                         
                         {% if not collection_restricted %}
-                        <div class="back-design-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name & Number</button>
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="small">Small Image</button>
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="full">Large Image</button>
+                        <div class="back-design-tabs" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name &amp; Number</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="small">Small Image<small class="tab-sub">Upper back, under the collar</small></button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="full">Large Image<small class="tab-sub">Across the back</small></button>
+                            {% if not collection_restricted %}<button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="oversized" id="backOversizedTab" hidden>Oversized Image<small class="tab-sub">Full back, extra large</small></button>{% endif %}
                         </div>
                         {% elif back_design_type == 'both' %}
-                        <div class="back-design-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name & Number</button>
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="small">Small Image</button>
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="full">Large Image</button>
+                        <div class="back-design-tabs" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name &amp; Number</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="small">Small Image<small class="tab-sub">Upper back, under the collar</small></button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="full">Large Image<small class="tab-sub">Across the back</small></button>
+                            {% if not collection_restricted %}<button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="oversized" id="backOversizedTab" hidden>Oversized Image<small class="tab-sub">Full back, extra large</small></button>{% endif %}
                         </div>
                         {% endif %}
                         
@@ -3219,7 +3224,7 @@
                 }
                 setLook();
             } else if (L.back_url) {                           // a picture on the back, small or large
-                const t = tab(meta.position === 'upper' ? '[data-size="small"]' : '[data-size="full"]');
+                const t = tab(meta.position === 'upper' ? '[data-size="small"]' : (meta.scale === 'oversized' ? '[data-size="oversized"]' : '[data-size="full"]'));
                 if (t) t.click();
                 showBackPicture(L.back_url);
             }
@@ -4530,17 +4535,18 @@
         }
         const maxH = 60;
         const isTank = !!(TRANSFER_SIZING && TRANSFER_SIZING.is_tank);
-        const maxVsGarment = garmentWidth * (isTank ? 0.70 : 0.56);
-        const maxVsCanvas = canvasWidth * 0.5;
-        const minVsGarment = garmentWidth * (isTank ? 0.42 : 0.28);
+        const bs = isOversizedBackImage() ? ((SCALE_CFG && SCALE_CFG.factors && SCALE_CFG.factors.oversized) || 1.3) : 1;    // Oversized is 1.3 times the standard width
+        const maxVsGarment = garmentWidth * bs * (isTank ? 0.70 : 0.56);
+        const maxVsCanvas = canvasWidth * bs * 0.5;
+        const minVsGarment = garmentWidth * bs * (isTank ? 0.42 : 0.28);
         let layerWidthPx;
         if (isTank && box && box.pxPerInch) {
             const widthIn = chartWidthForSize(state.selectedSize)
                 || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
-            layerWidthPx = widthIn * box.pxPerInch / visibleWidthRatio;
+            layerWidthPx = widthIn * bs * box.pxPerInch / visibleWidthRatio;
         } else {
             const targetRatio = isTank ? 0.58 : 0.46;
-            layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
+            layerWidthPx = garmentWidth * bs * targetRatio / visibleWidthRatio;
         }
         layerWidthPx = Math.min(layerWidthPx, maxVsGarment, maxVsCanvas);
         layerWidthPx = Math.max(layerWidthPx, minVsGarment);
@@ -5104,6 +5110,14 @@
     function isSmallBackImage() {
         return state.backDesignMode === 'upload' && state.backDesignSize === 'small';
     }
+    // An extra-large picture across the whole back: allowed where Oversized fits (adult, not a tank), never in a group store.
+    function backOversizedOk() {
+        return !!(typeof SCALE_CFG !== 'undefined' && SCALE_CFG && SCALE_CFG.oversized_ok);
+    }
+    function isOversizedBackImage() {
+        return state.backDesignMode === 'upload' && state.backDesignSize === 'oversized' && backOversizedOk();
+    }
+    function oversizedBackExtra() { return Number((SCALE_CFG && SCALE_CFG.adjust && SCALE_CFG.adjust.oversized) || 0); }
 
     // A name stacked down the back: the same numbers the server uses (utils/print_sizes.vertical_name_layout).
     function verticalLetters(name) {
@@ -5146,6 +5160,7 @@
         };
     }
     function appendSmallBackFields(formData) {
+        if (isOversizedBackImage()) formData.append('back_design_scale', 'oversized');
         if (!isSmallBackImage()) return;
         formData.append('back_design_position', 'upper');
         const name = comboStackName();
@@ -5169,11 +5184,13 @@
                 + Number(Boolean((state.backDesignNumber || '').trim()));
             return parts * 3;
         }
+        if (isOversizedBackImage()) return state.backDesignFee + oversizedBackExtra();
         return state.backDesignFee;
     }
     
     // ---- Print size: Medium / Standard / Oversized (same rules as utils/print_scale.py) ----
     var SCALE_CFG = (TRANSFER_SIZING && TRANSFER_SIZING.print_scale) || null;
+    setTimeout(function () { var t = document.getElementById('backOversizedTab'); if (t) t.hidden = !(SCALE_CFG && SCALE_CFG.oversized_ok); }, 0);
     function scaleApplies(placement) {
         return !!SCALE_CFG && ['center_chest', 'center_back', 'full_front', 'full_back'].includes(placement || 'center_chest');
     }
@@ -5993,9 +6010,12 @@
                     const hint = document.getElementById('backImageHint');
                     const move = document.getElementById('backImageMove');
                     const small = state.backDesignSize === 'small';
+                    const over = state.backDesignSize === 'oversized';
                     if (hint) hint.textContent = small
-                        ? 'A small image printed just under the collar, about 4 inches wide. $3.'
-                        : 'A large image printed across the upper back. $6.';
+                        ? 'A small image printed on the upper back, just under the collar, about 4 inches wide. $3.'
+                        : (over
+                            ? 'An extra-large image printed across the whole back, about 13 inches wide on an adult medium. $' + (state.backDesignFee + oversizedBackExtra()).toFixed(0) + '.'
+                            : 'A large image printed across the back. $6.');
                     if (move) move.style.display = small ? 'none' : '';
                     const stackWrap = document.getElementById('backStackWrap');
                     if (stackWrap) stackWrap.hidden = !small;

@@ -377,6 +377,10 @@ def add():
     _bd_upper = (data.get('back_design_position') or '').strip().lower() == 'upper' and not (_bd_name or _bd_number)
     if _bd_upper and back_design_url:
         back_design_meta = {'position': 'upper'}
+    elif (data.get('back_design_scale') or '').strip().lower() == 'oversized' and back_design_url and not (_bd_name or _bd_number) and collection is None:
+        from utils.print_scale import oversized_allowed
+        if oversized_allowed(product, size, 'center_back'):
+            back_design_meta = {'scale': 'oversized'}             # an extra-large picture across the whole back
     # A stacked name with a small image under the collar: one transfer, the image on top of the letters. The upload
     # then holds the small image, not a picture of the name.
     _neck_aspect = None
@@ -471,6 +475,7 @@ def add():
         is_blank=is_blank,
         design_fee=design_fee,
         print_scale=print_scale,
+        back_scale=(back_design_meta or {}).get('scale'),
     )
 
     if unit_price_override is not None and abs(unit_price_override - unit_price) > 0.01:

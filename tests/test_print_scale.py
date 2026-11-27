@@ -112,3 +112,37 @@ def test_an_order_line_names_its_print_size(app, seed):
     assert line.print_scale_label == 'Oversized print'
     assert OrderItem(transfer_production=json.dumps({'front': {'print_scale': 'standard'}})).print_scale_label == ''
     assert OrderItem().print_scale_label == ''
+
+
+def test_an_oversized_back_picture_costs_more_and_is_ordered_bigger(client, seed):
+    from io import BytesIO
+    from pathlib import Path
+    from tests.test_back_options import _add, _png_bytes
+    _add(client, product_id=seed['tee_id'], size='M', color='Black', quantity=1, placement='center_chest',
+         design_id=seed['free_design_id'], back_design_scale='oversized', back_design=(BytesIO(_png_bytes()), 'big.png'))
+    with client.session_transaction() as sess:
+        item = dict(sess['cart'][0])
+    try:
+        assert item['back_design_meta'] == {'scale': 'oversized'}
+        assert item['unit_price'] == 30.00 + 6.00 + 6.00                     # base, the $6 back picture, the $6 oversized price
+        assert PS.front_transfer_size('M', None, 'center_back', scale='oversized')['width'] == 13.0
+    finally:
+        Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)
+
+
+def test_checkout_reprices_an_oversized_back_picture_and_a_youth_one_stays_standard(app, seed):
+    with app.app_context():
+        tee = db.session.get(Product, seed['tee_id'])
+        line = {'back_design_url': '/x/b.png', 'back_design_meta': {'scale': 'oversized'}, 'design_id': seed['free_design_id'], 'size': 'M', 'placement': 'center_chest'}
+        assert price_cart_item(line, tee) == 42.00
+        youth = db.session.get(Product, seed['youth_id'])
+        line['size'] = 'YM'
+        assert price_cart_item(line, youth) == price_cart_item({**line, 'back_design_meta': {}}, youth)
+
+
+def test_the_back_options_are_labelled_and_the_picked_one_stays_readable(app, seed, client):
+    html = client.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
+    assert 'Upper back, under the collar' in html and 'id="backOversizedTab"' in html
+    from pathlib import Path
+    css = Path('static/css/main.css').read_text(encoding='utf-8')
+    assert 'body:not(.is-admin) .back-design-tab.active { color: #fff; }' in css

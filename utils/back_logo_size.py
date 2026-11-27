@@ -64,7 +64,8 @@ def back_logo_placement(item):
 def back_logo_dims(item):
     """{'width','height','width_display','height_display','exceeds_safe_area','known'} for a back picture."""
     aw, ah = (aspect_for(item) or (None, None))
-    chart = front_transfer_size(item.size, getattr(item, 'product', None), back_logo_placement(item), aw, ah)
+    meta = dict(getattr(item, 'back_design_details', None) or {})
+    chart = front_transfer_size(item.size, getattr(item, 'product', None), back_logo_placement(item), aw, ah, scale=meta.get('scale'))
     known = bool(aw and ah)
     return {
         'width': chart['width'], 'height': chart['height'] if known else None,

@@ -34,6 +34,11 @@ SINGLE_BACK_DESIGN_FEE = 3.00
 BLANK_ITEM_DISCOUNT = 12.00
 
 
+def adjustments_for_back():
+    from utils.print_scale import adjustments
+    return float(adjustments().get('oversized', 0.0))
+
+
 def size_surcharge(product, size):
     """Extra cost for an extended adult size. Youth garments always return 0."""
     if not size:
@@ -52,6 +57,7 @@ def calculate_unit_price(
     is_blank=False,
     design_fee=0.0,
     print_scale=None,
+    back_scale=None,
 ):
     """Price for one garment, before quantity.
 
@@ -71,6 +77,12 @@ def calculate_unit_price(
     from utils.print_scale import price_adjustment
     if not is_blank:
         price += price_adjustment(print_scale, placement, product, size)
+
+    # A back picture can be Oversized too (a large image across the whole back): the same price change as the main print.
+    if has_back_design and back_design_parts is None and not is_blank and back_scale == 'oversized':
+        from utils.print_scale import oversized_allowed
+        if oversized_allowed(product, size, 'center_back'):
+            price += adjustments_for_back()
 
     if has_back_design:
         price += (
@@ -164,4 +176,5 @@ def price_cart_item(item, product, design=None):
         is_blank=is_blank,
         design_fee=design_fee,
         print_scale=item.get('print_scale'),
+        back_scale=meta.get('scale'),
     )

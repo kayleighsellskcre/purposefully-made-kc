@@ -4253,6 +4253,8 @@ body:not(.is-admin) .filter-tab.active,
 body:not(.is-admin) .back-design-tab.active,
 .customizer-container .size-card.has-qty,
 .customizer-container .size-card.has-qty.selected { background: var(--btn-rose); border-color: var(--btn-rose); }
+body:not(.is-admin) .filter-tab.active,
+body:not(.is-admin) .back-design-tab.active { color: #fff; }        /* the picked button's words stay readable: white on the rose, not rose on rose */
 .shop-section .product-card .btn-customize { color: var(--btn-rose) !important; border-color: var(--btn-rose); }
 .shop-section .product-card:hover .btn-customize, .shop-section .product-card .btn-customize:hover { background: var(--btn-rose); color: #fff !important; }
 
