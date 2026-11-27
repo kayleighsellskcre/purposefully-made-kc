@@ -205,3 +205,23 @@ def test_the_order_page_shows_the_planned_back_print(app, seed, admin_client):
     oid = _in_db(app, make)
     page = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
     assert 'Oversized Full Back' in page and '14 1/2' in page and '0.5' in page and 'right' in page and 'up' in page
+
+
+def test_an_oversized_back_picture_is_named_in_the_cart_and_on_the_order(app, seed, client):
+    import json
+    from io import BytesIO
+    from pathlib import Path
+    from models import OrderItem
+    from tests.test_back_options import _add, _png_bytes
+    _add(client, product_id=seed['tee_id'], size='M', color='Black', quantity=1, placement='center_chest',
+         design_id=seed['free_design_id'], back_design_scale='oversized', back_design=(BytesIO(_png_bytes()), 'big.png'))
+    page = client.get('/cart/').get_data(as_text=True)
+    with client.session_transaction() as sess:
+        item = dict(sess['cart'][0])
+    try:
+        assert 'Oversized Full Back' in page
+        line = OrderItem(back_design_meta=json.dumps({'scale': 'oversized'}))
+        assert line.print_scale_label == 'Oversized Full Back'
+        assert OrderItem(back_design_meta=None).print_scale_label == ''
+    finally:
+        Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)

@@ -1086,17 +1086,23 @@ class OrderItem(db.Model):
     
     @property
     def print_scale_label(self):
-        """'Medium print' or 'Oversized print' for a line made at one of those sizes, else empty."""
+        """'Medium print' or 'Oversized print' for a line made at one of those sizes, plus 'Oversized Full Back' when the
+        picture across the back is Oversized. Empty when neither applies."""
+        labels = []
         raw = self.transfer_production
-        if not raw:
-            return ''
-        try:
-            import json
-            data = raw if isinstance(raw, dict) else json.loads(raw)
-            scale = ((data or {}).get('front') or {}).get('print_scale')
-        except (TypeError, ValueError):
-            return ''
-        return f'{scale.title()} print' if scale in ('medium', 'oversized') else ''
+        if raw:
+            try:
+                import json
+                data = raw if isinstance(raw, dict) else json.loads(raw)
+                scale = ((data or {}).get('front') or {}).get('print_scale')
+                if scale in ('medium', 'oversized'):
+                    labels.append(f'{scale.title()} print')
+            except (TypeError, ValueError):
+                pass
+        details = self.back_design_details
+        if isinstance(details, dict) and details.get('scale') == 'oversized':
+            labels.append('Oversized Full Back')
+        return ' · '.join(labels)
 
     @property
     def back_design_details(self):
