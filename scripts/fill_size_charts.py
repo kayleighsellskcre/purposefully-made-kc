@@ -39,8 +39,7 @@ def main():
 
     with create_app().app_context():
         r = fill_size_charts(dry_run=args.dry_run, force=args.force, say=print)
-    print(f"
-{r['saved']} charts {'would be ' if args.dry_run else ''}saved, {r['skipped']} already had one.")
+    print(f"\n{r['saved']} charts {'would be ' if args.dry_run else ''}saved, {r['skipped']} already had one.")
     print(f"Not available from S&S ({len(r['missing'])}): {', '.join(r['missing'])}")
 
 
