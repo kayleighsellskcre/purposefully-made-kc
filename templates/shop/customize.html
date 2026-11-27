@@ -895,7 +895,7 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     font-size: 1.25rem;
-    color: var(--terra-cotta);
+    color: var(--terra-cotta-text, #9A5F52);
 }
 @media (max-width: 420px) {
     .back-design-offer-header {
@@ -1137,7 +1137,7 @@
 }
 
 .spec-sheet-link:hover {
-    color: var(--accent-color);
+    color: var(--terra-cotta-text, #9A5F52);
     border-color: var(--accent-color);
     transform: translateY(-1px);
 }
@@ -1201,7 +1201,7 @@
 .scale-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 1rem; }
 .scale-grid .scale-option { padding: 0.9rem 0.5rem; }
 .scale-grid .scale-option small { display: block; margin-top: 0.2rem; }
-.scale-grid .scale-option .scale-price { font-weight: 600; color: var(--terra-cotta); }
+.scale-grid .scale-option .scale-price { font-weight: 600; color: var(--terra-cotta-text, #9A5F52); }
 @media (max-width: 480px) {
     .scale-grid { grid-template-columns: 1fr; }
     .placement-grid {
@@ -1250,7 +1250,7 @@
 }
 
 .placement-option.selected strong, .scale-option.selected strong {
-    color: var(--terra-cotta);
+    color: var(--terra-cotta-text, #9A5F52);
 }
 
 .placement-option.selected::after, .scale-option.selected::after {
@@ -1500,7 +1500,7 @@
 .price-total {
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--accent-color);
+    color: var(--terra-cotta-text, #9A5F52);
     border-top: 2px solid var(--border-color);
     padding-top: 0.5rem;
     margin-top: 0.5rem;
@@ -1537,7 +1537,7 @@
     min-width: 44px;
     background: #fff;
     border: 1px solid var(--terra-cotta);
-    color: var(--terra-cotta);
+    color: var(--terra-cotta-text, #9A5F52);
     border-radius: 4px;
     cursor: pointer;
     touch-action: manipulation;
@@ -2825,11 +2825,11 @@
                     </div>
                     <div class="price-row" id="sizeUpchargeRow" style="display: none;">
                         <span>Size upcharge (<span id="sizeUpchargeLabel"></span>):</span>
-                        <span style="color: var(--terra-cotta); font-weight: 600;" id="sizeUpchargeAmount"></span>
+                        <span style="color: var(--terra-cotta-text, #9A5F52); font-weight: 600;" id="sizeUpchargeAmount"></span>
                     </div>
                     <div class="price-row" id="backDesignFeeRow" style="display: none;">
                         <span>Back Design Fee:</span>
-                        <span id="backDesignFeeAmount" style="color: var(--terra-cotta); font-weight: 600;">+$6.00</span>
+                        <span id="backDesignFeeAmount" style="color: var(--terra-cotta-text, #9A5F52); font-weight: 600;">+$6.00</span>
                     </div>
                     <div class="price-row">
                         <span>Items:</span>

@@ -16,7 +16,7 @@
 }
 
 .collection-header-subtitle a {
-    color: var(--accent-color);
+    color: var(--terra-cotta-text, #9A5F52);
 }
 
 .group-order-cover {
@@ -224,7 +224,7 @@
 }
 .age-badge--adult {
     background: #fef0eb;
-    color: #b87c6f;
+    color: var(--terra-cotta-text, #9A5F52);
 }
 .age-badge--youth {
     background: #e8f4fd;
@@ -305,7 +305,7 @@
 .design-card-content .price {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--accent-color);
+    color: var(--terra-cotta-text, #9A5F52);
 }
 
 .design-card-content .cta {
@@ -355,7 +355,7 @@
     margin-bottom: 0.5rem;
 }
 
-.team-orn { display:flex; align-items:center; justify-content:center; gap:.9rem; margin:.7rem auto 1rem; color:var(--accent-color); }
+.team-orn { display:flex; align-items:center; justify-content:center; gap:.9rem; margin:.7rem auto 1rem; color:var(--terra-cotta-text, #9A5F52); }
 .team-orn::before, .team-orn::after { content:''; width:64px; height:1px; background:linear-gradient(90deg, transparent, var(--accent-color)); }
 .team-orn::after { transform:scaleX(-1); }
 .team-orn i { font-style:normal; font-size:.8rem; letter-spacing:.4em; }
@@ -414,7 +414,7 @@
 .uniform-kit-card strong, .uniform-kit-card span { display:block; }
 .uniform-kit-card strong { font-family:var(--font-heading); font-size:1.2rem; }
 .uniform-kit-card .uniform-color { color:var(--text-secondary); margin:.2rem 0 .65rem; }
-.uniform-kit-card .uniform-cta { color:var(--terra-cotta); font-weight:700; font-size:.85rem; }
+.uniform-kit-card .uniform-cta { color:var(--terra-cotta-text, #9A5F52); font-weight:700; font-size:.85rem; }
 .fan-wear-section[hidden], .uniform-section[hidden] { display:none!important; }
 
 /* ── Org store navigation bar ─────────────────────────────────────── */
@@ -524,7 +524,7 @@
             ⚠ This group order closed on {{ collection.order_deadline|kc_date }}. Ordering is no longer available.
         </p>
         {% elif collection.not_yet_open %}
-        <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#b87c6f; font-weight:600; font-style:italic; letter-spacing:0.01em;">
+        <p class="collection-header-subtitle" style="margin-top:0.5rem; color:var(--terra-cotta-text, #9A5F52); font-weight:600; font-style:italic; letter-spacing:0.01em;">
             {% if collection.order_deadline %}
             ✨ Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and close {{ collection.order_deadline|kc_date('%A, %B %-d') }}. Feel free to look around now, and be ready to order once we open!
             {% else %}

@@ -114,7 +114,7 @@
                     {% endif %}
                     <form method="post" action="{{ url_for('auth.logout') }}" class="mobile-only">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="nav-link nav-account-sub" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit;padding:0.5rem 0.65rem;color:var(--terra-cotta);font-weight:600;">Log Out</button>
+                        <button type="submit" class="nav-link nav-account-sub" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit;padding:0.5rem 0.65rem;color:var(--terra-cotta-text, #9A5F52);font-weight:600;">Log Out</button>
                     </form>
                     {% else %}
                     <div class="nav-link-divider mobile-only"></div>

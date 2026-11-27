@@ -32,7 +32,7 @@
                         <form method="post" action="{{ url_for('admin.custom_design_request_detail', request_id=r.id) }}"
                               onsubmit="return confirm('Decline and email customer?')" style="margin:0">
                             <input type="hidden" name="action" value="decline">
-                            <button type="submit" class="btn btn-outline btn-sm" style="color:var(--terra-cotta);border-color:var(--terra-cotta);">Decline</button>
+                            <button type="submit" class="btn btn-outline btn-sm" style="color:var(--terra-cotta-text, #9A5F52);border-color:var(--terra-cotta);">Decline</button>
                         </form>
                         {% endif %}
                         <form method="post" action="{{ url_for('admin.custom_design_request_detail', request_id=r.id) }}"

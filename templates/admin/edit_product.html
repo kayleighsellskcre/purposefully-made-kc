@@ -237,7 +237,7 @@
 /* ── Page Layout ── */
 .ep-page { padding: 2.5rem 0 5rem; }
 .ep-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2rem; }
-.ep-eyebrow { display:block; font-size:0.68rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent-color); margin-bottom:0.3rem; }
+.ep-eyebrow { display:block; font-size:0.68rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra-cotta-text, #9A5F52); margin-bottom:0.3rem; }
 .ep-title { font-size:1.85rem; margin:0; }
 .ep-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem; }
 
@@ -284,17 +284,17 @@
 /* ── Images ── */
 .ep-image-section { padding-bottom:1.25rem; margin-bottom:1.25rem; border-bottom:1px solid rgba(232,208,177,0.35); }
 .ep-image-section:last-of-type { border-bottom:none; padding-bottom:0; margin-bottom:0; }
-.ep-image-label { font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--accent-color); margin-bottom:0.75rem; }
+.ep-image-label { font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--terra-cotta-text, #9A5F52); margin-bottom:0.75rem; }
 .ep-current-image { margin-bottom:0.75rem; padding:0.85rem; background:var(--ivory-silk); border-radius:10px; display:flex; align-items:center; gap:1rem; }
 .ep-current-image img { width:70px; height:70px; object-fit:contain; border-radius:8px; border:1px solid rgba(232,208,177,0.6); }
 .ep-current-image p { font-size:0.75rem; color:var(--text-secondary); word-break:break-all; }
 .ep-file-input { font-size:0.85rem; color:var(--text-primary); padding:0.5rem 0; cursor:pointer; }
 .ep-tip { display:flex; align-items:flex-start; gap:0.6rem; font-size:0.8rem; color:var(--text-secondary); background:rgba(184,124,111,0.07); border-radius:10px; padding:0.85rem 1rem; margin-top:1rem; }
-.ep-tip svg { flex-shrink:0; margin-top:1px; color:var(--accent-color); }
+.ep-tip svg { flex-shrink:0; margin-top:1px; color:var(--terra-cotta-text, #9A5F52); }
 
 /* ── Actions ── */
 .ep-actions { display:flex; align-items:center; gap:1rem; }
-.ep-btn-delete { border-color:var(--terra-cotta); color:var(--terra-cotta); }
+.ep-btn-delete { border-color:var(--terra-cotta); color:var(--terra-cotta-text, #9A5F52); }
 .ep-btn-delete:hover { background:var(--terra-cotta); color:#fff; border-color:var(--terra-cotta); }
 
 @media (max-width: 960px) {

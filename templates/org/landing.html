@@ -12,7 +12,7 @@
 .org-cover-tile { width: min(170px, 38vw); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 0.9rem; background: rgba(255,255,255,0.85); border: 1px solid var(--border-light); border-radius: 20px; box-shadow: 0 10px 28px rgba(58,61,72,0.12); }
 .org-cover-tile img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .org-hero h1 { font-size: 2.5rem; letter-spacing: -0.01em; margin-bottom: 0.5rem; }
-.org-orn { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin: 0.9rem auto 1.1rem; color: var(--accent-color); }
+.org-orn { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin: 0.9rem auto 1.1rem; color: var(--terra-cotta-text, #9A5F52); }
 .org-orn::before, .org-orn::after { content: ''; width: 72px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-color)); }
 .org-orn::after { transform: scaleX(-1); }
 .org-orn i { font-style: normal; font-size: 0.8rem; letter-spacing: 0.4em; }
@@ -64,14 +64,14 @@
 .org-card-sub { color: var(--text-secondary); font-size: 0.95rem; }
 .org-card-cta {
     margin-top: 1rem; align-self: center; padding: 0.75rem 1.8rem; border-radius: 999px;
-    border: 1.5px solid var(--accent-color); color: var(--accent-color);
+    border: 1.5px solid var(--accent-color); color: var(--terra-cotta-text, #9A5F52);
     font-size: 0.78rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
     transition: background .3s, color .3s, box-shadow .3s;
 }
 .org-card:hover .org-card-cta { background: var(--accent-color); color: #fff; box-shadow: 0 8px 20px rgba(184,124,111,0.4); }
 
 /* ── Fan Wear feature ──────────────────────────────────────────── */
-.org-or { display: flex; align-items: center; gap: 1.25rem; margin: 4rem 0 2.25rem; color: var(--accent-color); }
+.org-or { display: flex; align-items: center; gap: 1.25rem; margin: 4rem 0 2.25rem; color: var(--terra-cotta-text, #9A5F52); }
 .org-or::before, .org-or::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-color), transparent); }
 .org-or span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
 
@@ -107,7 +107,7 @@
 
 .org-empty { text-align: center; color: var(--text-secondary); padding: 3rem 0; }
 .org-footer-note { text-align: center; margin: 3.5rem 0 0; color: var(--text-secondary); font-size: 0.95rem; }
-.org-footer-note a { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
+.org-footer-note a { color: var(--terra-cotta-text, #9A5F52); text-decoration: underline; text-underline-offset: 3px; }
 
 @keyframes orgRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .org-card { animation: none; } .org-card, .org-card-art img, .org-fan, .org-fan-btn { transition: none; } }

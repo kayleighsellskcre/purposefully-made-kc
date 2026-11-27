@@ -67,7 +67,7 @@
 .cta-buttons .btn-secondary {
     background: transparent;
     border: 2px solid var(--accent-color);
-    color: var(--accent-color);
+    color: var(--terra-cotta-text, #9A5F52);
 }
 .cta-buttons .btn-secondary:hover {
     background: var(--accent-color);
@@ -235,7 +235,7 @@
     padding: 0.2rem 0.6rem;
     font-size: 0.78rem;
     font-weight: 600;
-    color: var(--terra-cotta);
+    color: var(--terra-cotta-text, #9A5F52);
 }
 .dir-badge.locked {
     color: var(--text-secondary);
@@ -300,13 +300,13 @@
 .dir-search-clear:hover { color: var(--text-primary); }
 .dir-card[hidden] { display: none !important; }
 .go-jump { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin: 1.4rem 0 0; }
-.go-jump-link { display: inline-block; padding: .65rem 1.5rem; border: 1.5px solid var(--accent-color); border-radius: var(--radius-btn, 12px); color: var(--accent-color); font-size: .8rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; background: rgba(255,255,255,.6); transition: var(--transition); }
+.go-jump-link { display: inline-block; padding: .65rem 1.5rem; border: 1.5px solid var(--accent-color); border-radius: var(--radius-btn, 12px); color: var(--terra-cotta-text, #9A5F52); font-size: .8rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; background: rgba(255,255,255,.6); transition: var(--transition); }
 .go-jump-link:hover, .go-jump-link--solid { background: var(--accent-color); color: #fff; }
 .go-jump-link--solid:hover { background: #a56a5d; color: #fff; }
 .go-help { max-width: 860px; margin: 2.5rem auto 0; border: 1px solid var(--border-light); border-radius: 16px; background: #fff; box-shadow: var(--box-shadow); }
 .go-help > summary { cursor: pointer; list-style: none; padding: 1.1rem 1.5rem; font-family: var(--font-heading); font-size: 1.15rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .go-help > summary::-webkit-details-marker { display: none; }
-.go-help > summary::after { content: '+'; font-family: var(--font-primary); font-size: 1.5rem; color: var(--accent-color); line-height: 1; }
+.go-help > summary::after { content: '+'; font-family: var(--font-primary); font-size: 1.5rem; color: var(--terra-cotta-text, #9A5F52); line-height: 1; }
 .go-help[open] > summary::after { content: '\2212'; }
 .go-help[open] > summary { border-bottom: 1px solid var(--border-light); }
 .go-help > :not(summary) { padding-left: 1.25rem; padding-right: 1.25rem; }

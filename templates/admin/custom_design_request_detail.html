@@ -82,7 +82,7 @@
                         <label>Decline reason (optional - included in customer email)</label>
                         <input type="text" name="decline_reason" class="form-control" placeholder="e.g. Too complex to recreate">
                     </div>
-                    <button type="submit" class="btn btn-outline" style="color:var(--terra-cotta);border-color:var(--terra-cotta);"
+                    <button type="submit" class="btn btn-outline" style="color:var(--terra-cotta-text, #9A5F52);border-color:var(--terra-cotta);"
                         onclick="return confirm('Decline this request and email the customer?')">
                         Decline &amp; Notify Customer
                     </button>
@@ -121,7 +121,7 @@
 
 <style>
 .admin-page { padding: 2rem 0; }
-.back-link { display: inline-block; margin-bottom: 1rem; color: var(--accent-color); }
+.back-link { display: inline-block; margin-bottom: 1rem; color: var(--terra-cotta-text, #9A5F52); }
 .request-date { color: var(--text-secondary); margin-bottom: 2rem; }
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 @media (max-width: 960px) { .detail-grid { grid-template-columns: 1fr; } }
@@ -166,7 +166,7 @@
     pointer-events: none;
     text-align: center;
 }
-.design-file-placeholder svg { color: var(--terra-cotta); }
+.design-file-placeholder svg { color: var(--terra-cotta-text, #9A5F52); }
 .design-file-text { font-weight: 600; color: var(--text-primary); }
 .design-file-hint { font-size: 0.85rem; color: var(--text-secondary); }
 .design-file-selected {
@@ -196,7 +196,7 @@
     cursor: pointer;
     padding: 0 0.25rem;
 }
-.design-file-clear:hover { color: var(--terra-cotta); }
+.design-file-clear:hover { color: var(--terra-cotta-text, #9A5F52); }
 .completed-info { padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; margin-bottom: 1rem; }
 .admin-notes-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
 .badge-pending, .badge-in_progress, .badge-completed, .badge-declined { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }

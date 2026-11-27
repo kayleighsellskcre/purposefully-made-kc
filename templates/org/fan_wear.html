@@ -22,11 +22,11 @@
 .fw-group { border: 1px solid var(--border-light); border-radius: 14px; background: #fffdf9; overflow: hidden; }
 .fw-group > summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem 1.1rem; cursor: pointer; list-style: none; }
 .fw-group > summary::-webkit-details-marker { display: none; }
-.fw-group > summary::after { content: '+'; font-size: 1.4rem; line-height: 1; color: var(--accent-color); margin-left: .5rem; }
+.fw-group > summary::after { content: '+'; font-size: 1.4rem; line-height: 1; color: var(--terra-cotta-text, #9A5F52); margin-left: .5rem; }
 .fw-group[open] > summary::after { content: '\2212'; }
 .fw-group-name { font-family: var(--font-heading); font-size: 1.1rem; font-weight: 600; flex: 1; }
 .fw-group-count { font-size: .84rem; color: var(--text-secondary); }
-.fw-group-count.has-picks { color: var(--accent-color); font-weight: 700; }
+.fw-group-count.has-picks { color: var(--terra-cotta-text, #9A5F52); font-weight: 700; }
 .fw-group[open] > summary { border-bottom: 1px solid var(--border-light); }
 .fw-group .fw-products { padding: .9rem 1rem 1rem; margin-top: 0; }
 .fw-designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .8rem; margin-top: 1rem; }

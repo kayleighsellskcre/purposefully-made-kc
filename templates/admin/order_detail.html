@@ -746,7 +746,7 @@
     text-decoration: none;
     transition: color 0.2s;
 }
-.od-back:hover { color: var(--terra-cotta); }
+.od-back:hover { color: var(--terra-cotta-text, #9A5F52); }
 
 .od-title {
     font-family: var(--font-heading);
@@ -756,7 +756,7 @@
     line-height: 1.1;
 }
 
-.od-number { color: var(--terra-cotta); }
+.od-number { color: var(--terra-cotta-text, #9A5F52); }
 .od-date { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
 
 .od-header-right {
@@ -786,7 +786,7 @@
 .od-status-picked_up, .od-status-shipped { background: rgba(16,185,129,0.1); color: #059669; }
 .od-payment-paid                      { background: rgba(16,185,129,0.1);  color: #059669; }
 .od-payment-pending, .od-payment-unpaid { background: rgba(245,158,11,0.1); color: #d97706; }
-.od-payment-refunded, .od-payment-failed { background: rgba(184,124,111,0.12); color: var(--terra-cotta); }
+.od-payment-refunded, .od-payment-failed { background: rgba(184,124,111,0.12); color: var(--terra-cotta-text, #9A5F52); }
 .od-cash-due {
     background: #fef3c7;
     color: #b45309;
@@ -837,7 +837,7 @@
     font-weight: 700;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--terra-cotta);
+    color: var(--terra-cotta-text, #9A5F52);
     margin-bottom: 0.25rem;
 }
 
@@ -868,7 +868,7 @@
 }
 
 .od-info-val  { font-size: 0.88rem; color: var(--text-primary); font-weight: 500; }
-.od-link      { color: var(--terra-cotta); text-decoration: none; }
+.od-link      { color: var(--terra-cotta-text, #9A5F52); text-decoration: none; }
 .od-link:hover { text-decoration: underline; }
 .od-mono      { font-family: 'Courier New', monospace; font-size: 0.82rem; }
 
@@ -927,7 +927,7 @@
     transition: border-color 0.2s, background 0.2s;
 }
 .od-select:focus { outline: none; background: #fff; border-color: var(--terra-cotta); box-shadow: 0 0 0 3px rgba(184,124,111,0.12); }
-.od-select-arrow { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--terra-cotta); opacity: 0.7; }
+.od-select-arrow { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--terra-cotta-text, #9A5F52); opacity: 0.7; }
 
 .od-input {
     width: 100%;
@@ -1046,7 +1046,7 @@
 }
 
 .od-profit-pos { color: #059669; }
-.od-profit-neg { color: var(--terra-cotta); }
+.od-profit-neg { color: var(--terra-cotta-text, #9A5F52); }
 
 .od-btn {
     display: inline-flex;

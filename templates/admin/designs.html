@@ -58,7 +58,7 @@
                         </form>
                         <button type="button"
                                 class="btn btn-outline btn-sm"
-                                style="color:var(--terra-cotta);border-color:var(--terra-cotta);margin-left:0.5rem;"
+                                style="color:var(--terra-cotta-text, #9A5F52);border-color:var(--terra-cotta);margin-left:0.5rem;"
                                 onclick="libConfirmDelete({{ design.id }}, '{{ (design.original_filename or 'Design')|replace("'", "\'") }}', '{{ url_for('admin.design_delete', design_id=design.id) }}')">
                             Remove
                         </button>
@@ -524,7 +524,7 @@
     background: none; border: none; font-size: 1.25rem;
     color: var(--text-secondary); cursor: pointer; padding: 0 0.25rem; line-height: 1;
 }
-.gallery-file-clear:hover { color: var(--terra-cotta); }
+.gallery-file-clear:hover { color: var(--terra-cotta-text, #9A5F52); }
 .gallery-upload-btn { margin-top: 0.5rem; }
 
 .gallery-list-title {
@@ -645,12 +645,12 @@
     flex-wrap: wrap;
 }
 .btn-danger {
-    color: var(--terra-cotta) !important;
+    color: var(--terra-cotta-text, #9A5F52) !important;
     border-color: var(--terra-cotta) !important;
 }
 .btn-danger:hover {
     background: rgba(184, 124, 111, 0.1) !important;
-    color: var(--terra-cotta) !important;
+    color: var(--terra-cotta-text, #9A5F52) !important;
 }
 .gallery-empty-state {
     text-align: center;
@@ -661,7 +661,7 @@
 }
 .gallery-empty-icon {
     font-size: 2.5rem;
-    color: var(--terra-cotta);
+    color: var(--terra-cotta-text, #9A5F52);
     margin-bottom: 1rem;
     opacity: 0.8;
 }
@@ -717,7 +717,7 @@
     background: none; border: none; font-size: 1.15rem; line-height: 1;
     color: var(--text-secondary); cursor: pointer; padding: 0.1rem 0.3rem; border-radius: 4px;
 }
-.queue-remove:hover { color: var(--terra-cotta); background: rgba(184,124,111,0.1); }
+.queue-remove:hover { color: var(--terra-cotta-text, #9A5F52); background: rgba(184,124,111,0.1); }
 .form-control-sm {
     padding: 0.3rem 0.55rem; font-size: 0.82rem; border-radius: 6px;
     border: 1.5px solid var(--border-color); background: #fff; font-family: inherit; width: 100%;
@@ -1218,7 +1218,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
             var badge = '';
             var groupEl = document.getElementById('groupVariantsToggle');
             if (groupEl && groupEl.checked && entries.length >= 2 && idx === 0 && item.status === 'pending') {
-                badge = '<span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--terra-cotta);background:rgba(184,124,111,0.1);border-radius:4px;padding:0.1rem 0.4rem;margin-right:0.35rem;">Main</span>';
+                badge = '<span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--terra-cotta-text, #9A5F52);background:rgba(184,124,111,0.1);border-radius:4px;padding:0.1rem 0.4rem;margin-right:0.35rem;">Main</span>';
             } else if (groupEl && groupEl.checked && entries.length >= 2 && idx > 0 && item.status === 'pending') {
                 badge = '<span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-secondary);background:var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;margin-right:0.35rem;">Color</span>';
             }

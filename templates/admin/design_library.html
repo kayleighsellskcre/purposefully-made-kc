@@ -13,13 +13,13 @@
 .dl-stat b { display: block; font-family: var(--font-heading); font-size: 1.9rem; line-height: 1.1; }
 .dl-stat span { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
 .dl-stat.todo { border-color: var(--terra-cotta); background: #fbf3ee; }
-.dl-stat.todo b { color: var(--terra-cotta); }
+.dl-stat.todo b { color: var(--terra-cotta-text, #9A5F52); }
 .dl-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.2rem 1.3rem; margin-bottom: 1.1rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
 .dl-card h2 { margin: 0 0 .2rem; font-size: 1.15rem; }
 .dl-card .sub { margin: 0 0 .9rem; color: var(--text-secondary); font-size: .88rem; }
 .dl-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .dl-btn { font: 600 .7rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: .6rem 1.1rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); background: var(--terra-cotta); color: #fff; text-decoration: none; }
-.dl-btn.ghost { background: #fff; color: var(--terra-cotta); }
+.dl-btn.ghost { background: #fff; color: var(--terra-cotta-text, #9A5F52); }
 .dl-bar { display: grid; grid-template-columns: 11rem 1fr 2.5rem; gap: .7rem; align-items: center; font-size: .88rem; margin: .35rem 0; }
 .dl-bar i { display: block; height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--terra-cotta), #b79c79); min-width: 2px; }
 .dl-bar em { font-style: normal; text-align: right; color: var(--text-secondary); }
@@ -32,7 +32,7 @@
 .dl-steps li:first-child { border-top: 0; }
 .dl-steps li > div { flex: 1; }
 .dl-steps small { color: var(--text-secondary); }
-.dl-dot { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--terra-cotta); color: var(--terra-cotta); display: flex; align-items: center; justify-content: center; font-weight: 700; flex: 0 0 30px; }
+.dl-dot { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--terra-cotta); color: var(--terra-cotta-text, #9A5F52); display: flex; align-items: center; justify-content: center; font-weight: 700; flex: 0 0 30px; }
 .dl-steps li.done .dl-dot { background: #7a9a7e; border-color: #7a9a7e; color: #fff; }
 .dl-two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
 @media (max-width: 768px) { .dl-two { grid-template-columns: 1fr; } .dl-bar { grid-template-columns: 8rem 1fr 2rem; } }
