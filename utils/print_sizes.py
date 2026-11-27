@@ -548,6 +548,11 @@ def front_transfer_size(size, product=None, placement='center_chest', aspect_w=N
     if scale == 'oversized':
         max_h = max(max_h, max_h * _ps.OVERSIZED_HEIGHT_FACTOR)         # 19 in on an adult, in proportion on smaller garments
         max_w = max_w * _ps.width_factor('oversized', placement)
+    # Never bigger than the press allows (14 x 16 in on the 16 x 20 press): shrink both sides together so the art keeps its shape.
+    fit = min(1.0, _ps.PRESS_MAX_WIDTH / width if width else 1.0, _ps.PRESS_MAX_HEIGHT / height if height else 1.0)
+    if fit < 1.0:
+        width, height = width * fit, height * fit
+    max_w, max_h = min(max_w, _ps.PRESS_MAX_WIDTH), min(max_h, _ps.PRESS_MAX_HEIGHT)
     exceeds = bool(width > max_w + 0.001 or height > max_h + 0.001)
     return {
         'order_by': 'WIDTH',
@@ -745,7 +750,7 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
 def _print_scale_config(product=None):
     """What the customizer needs for the Medium / Standard / Oversized choice."""
     from utils import print_scale as _ps
-    return {'factors': dict(_ps.WIDTH_FACTOR, back_oversized=_ps.BACK_OVERSIZED_FACTOR), 'adjust': _ps.adjustments(), 'hints': _ps.HINTS,
+    return {'factors': dict(_ps.WIDTH_FACTOR, back_oversized=_ps.BACK_OVERSIZED_FACTOR), 'press_max': [_ps.PRESS_MAX_WIDTH, _ps.PRESS_MAX_HEIGHT], 'adjust': _ps.adjustments(), 'hints': _ps.HINTS,
             'back_oversized_price': _ps.back_oversized_price(),
             'oversized_ok': _ps.oversized_allowed(product, None, 'center_back')}
 

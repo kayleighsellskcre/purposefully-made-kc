@@ -10,14 +10,19 @@ def test_widths_follow_the_standard_chart(app, seed):
     assert std == 10.0
     assert PS.front_transfer_size('M', None, 'center_chest', scale='medium')['width'] == 6.0
     big = PS.front_transfer_size('M', None, 'center_back', scale='oversized')
-    assert big['width'] == 14.5 and big['scale'] == 'oversized'      # the Oversized Full Back is 1.45 of the chart width
+    assert big['width'] == 13.0 and big['scale'] == 'oversized'      # the Oversized Full Back is 1.3 of the chart width
     # medium sits between a chest logo (4 in) and standard
     assert PS.front_transfer_size('M', None, 'left_chest')['width'] < 6.0 < std
 
 
-def test_a_tall_oversized_print_is_not_flagged_but_a_huge_one_is(app, seed):
-    assert PS.front_transfer_size('M', None, 'center_back', 1, 1.3, scale='oversized')['exceeds_safe_area'] is False
-    assert PS.front_transfer_size('M', None, 'center_back', 1, 2.5, scale='oversized')['exceeds_safe_area'] is True
+def test_a_tall_oversized_print_shrinks_to_fit_the_16_by_20_press(app, seed):
+    assert PS.front_transfer_size('M', None, 'center_back', 1, 1.2, scale='oversized')['exceeds_safe_area'] is False
+    huge = PS.front_transfer_size('M', None, 'center_back', 1, 2.5, scale='oversized')
+    assert huge['exceeds_safe_area'] is False
+    assert round(huge['height'], 2) == 16.0 and round(huge['width'], 2) == 6.4     # same shape, just smaller
+    for size in ('S', 'M', 'XL', '3XL'):
+        p = PS.front_transfer_size(size, None, 'center_back', 1, 1.0, scale='oversized')
+        assert p['width'] <= 14.0 and p['height'] <= 16.0
 
 
 def test_chest_logos_ignore_the_scale(app, seed):
@@ -78,7 +83,7 @@ def test_adding_to_the_cart_keeps_the_print_size_and_charges_for_it(app, seed, c
     assert line['print_scale'] == 'oversized' and line['unit_price'] == base + 6
     assert line['transfer_production']['front']['print_scale'] == 'oversized'
     assert line['transfer_production']['front']['placement_label'] == 'Center Back · Oversized'
-    assert line['transfer_production']['front']['width'] == 14.5           # the transfer sheet shows what to order
+    assert line['transfer_production']['front']['width'] == 13.0           # the transfer sheet shows what to order
 
 
 def test_a_size_that_does_not_fit_quietly_becomes_standard(app, seed, client):
@@ -130,7 +135,7 @@ def test_an_oversized_back_picture_costs_more_and_is_ordered_bigger(client, seed
     try:
         assert item['back_design_meta'] == {'scale': 'oversized'}
         assert item['unit_price'] == 30.00 + 12.00                           # base + the Oversized Full Back price, which replaces the $6 back charge
-        assert PS.front_transfer_size('M', None, 'center_back', scale='oversized')['width'] == 14.5
+        assert PS.front_transfer_size('M', None, 'center_back', scale='oversized')['width'] == 13.0
     finally:
         Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)
 
@@ -180,7 +185,7 @@ def test_an_oversized_back_picture_saves_its_planned_size_and_placement(client, 
     try:
         back = item['transfer_production']['back_print']
         assert back['print_scale'] == 'oversized' and back['kind'] == 'image'
-        assert back['width'] == 14.5 and back['height'] > 0 and back['width_display']
+        assert back['width'] == 13.0 and back['height'] > 0 and back['width_display']
         assert back['placement_offset'] == {'x_in': 0.5, 'y_in': -1.25}
     finally:
         Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)

@@ -16,9 +16,14 @@ DEFAULT_SCALE = 'standard'
 # Fraction of the standard chart width. Medium is a bit bigger than a chest logo (which is 0.4).
 WIDTH_FACTOR = {'medium': 0.6, 'standard': 1.0, 'oversized': 1.3}
 
-# The Oversized Full Back is a little bigger than the Oversized front: 1.45 of the chart width is about 14.5 in on an adult
-# medium. Much past this a normal portrait picture runs taller than the 19 in safe height and gets held back anyway.
-BACK_OVERSIZED_FACTOR = 1.45
+# The Oversized Full Back matches the Oversized front: 1.3 of the chart width, about 13 in on an adult medium.
+# (It was 1.45; the owner found that too big on hoodies, so it came down about 10%.)
+BACK_OVERSIZED_FACTOR = 1.3
+
+# The heat press is 16 x 20 in. No print is ever planned or previewed bigger than 14 in wide or 16 in tall, which leaves
+# about an inch of platen on every side so the edges press evenly.
+PRESS_MAX_WIDTH = 14.0
+PRESS_MAX_HEIGHT = 16.0
 BACK_PLACEMENTS = ('center_back', 'full_back')
 
 # An Oversized print may be taller than the standard safe height (19 in against 15.5 in on an adult), on every garment size.

@@ -4557,7 +4557,7 @@
         }
         const maxH = 60;
         const isTank = !!(TRANSFER_SIZING && TRANSFER_SIZING.is_tank);
-        const bs = isOversizedBackImage() ? backOversizedFactor() : 1;    // the Oversized Full Back is 1.45 times the standard width (set in utils/print_scale.py)
+        const bs = isOversizedBackImage() ? backOversizedFactor() : 1;    // the Oversized Full Back is 1.3 times the standard width (set in utils/print_scale.py)
         const maxVsGarment = garmentWidth * bs * (isTank ? 0.70 : 0.56);
         const maxVsCanvas = canvasWidth * bs * 0.5;
         const minVsGarment = garmentWidth * bs * (isTank ? 0.42 : 0.28);
@@ -4572,6 +4572,14 @@
         }
         layerWidthPx = Math.min(layerWidthPx, maxVsGarment, maxVsCanvas);
         layerWidthPx = Math.max(layerWidthPx, minVsGarment);
+        // Never show a print bigger than the press can make (14 x 16 in), so the preview matches what gets pressed.
+        if (box && box.pxPerInch && backDesignImage.naturalWidth) {
+            const press = (SCALE_CFG && SCALE_CFG.press_max) || [14, 16];
+            const aspect = backDesignImage.naturalHeight / backDesignImage.naturalWidth;
+            const capW = press[0] * box.pxPerInch / visibleWidthRatio;
+            const capH = aspect > 0 ? press[1] * box.pxPerInch / aspect : capW;
+            layerWidthPx = Math.min(layerWidthPx, capW, capH);
+        }
         backDesignLayer.style.width = layerWidthPx.toFixed(1) + 'px';
         backDesignLayer.style.maxWidth = 'none';
         backDesignLayer.style.maxHeight = maxH.toFixed(1) + '%';
@@ -5259,7 +5267,7 @@
         };
     }
 
-    function backOversizedFactor() { return Number((SCALE_CFG && SCALE_CFG.factors && (SCALE_CFG.factors.back_oversized || SCALE_CFG.factors.oversized)) || 1.45); }
+    function backOversizedFactor() { return Number((SCALE_CFG && SCALE_CFG.factors && (SCALE_CFG.factors.back_oversized || SCALE_CFG.factors.oversized)) || 1.3); }
     // The Oversized Full Back has one price of its own. It replaces the regular back print charge, it is not added to it.
     function oversizedBackFee() {
         const v = SCALE_CFG && SCALE_CFG.back_oversized_price;
