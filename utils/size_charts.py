@@ -99,7 +99,23 @@ def fill_size_charts(dry_run=False, force=False, say=None):
         candidates = [style] + [style[len(p):] for p in PREFIXES if style.startswith(p) and p != style]
         found = next((bybrand[k][c][0] for k in keys for c in candidates if c in bybrand[k]), None)
         if found is None:
-            missing.append(product.style_number)
+            from utils.sanmar_size_charts import chart_for
+            sanmar = chart_for(product.style_number)
+            if sanmar is None:
+                missing.append(product.style_number)
+                continue
+            if product.size_chart and not force:
+                skipped += 1
+                continue
+            problem = _odd(sanmar)
+            if problem:
+                say(f'CHECK      {product.style_number:10s} not saved: {problem}')
+                missing.append(f'{product.style_number} (looks wrong in the SanMar table: {problem})')
+                continue
+            say(f"{'would save' if dry_run else 'saved':10s} {product.style_number:10s} {len(sanmar)} sizes (SanMar spec sheet)")
+            if not dry_run:
+                product.size_chart = json.dumps(sanmar)
+            saved += 1
             continue
         if product.size_chart and not force:
             skipped += 1
