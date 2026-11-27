@@ -314,6 +314,18 @@ def sync_sanmar_inventory():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/fill-size-charts', methods=['POST'])
+@admin_required
+def fill_size_charts():
+    """Fill each product's own size chart from the manufacturer's measurements. Never replaces a chart already there."""
+    from utils.size_charts import start_fill_thread
+
+    start_fill_thread(current_app._get_current_object())
+    flash('Filling in size charts from the manufacturer measurements. Styles that already have a chart are left alone. '
+          'A note will appear in your inbox in a minute or two with the result.', 'success')
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/import-bella-canvas-csv', methods=['POST'])
 @admin_required
 def import_bella_canvas_csv():

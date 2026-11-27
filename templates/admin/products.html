@@ -75,6 +75,21 @@
             </div>
         </div>
 
+        <!-- Size charts -->
+        <div class="prod-tool-group">
+            <span class="prod-tool-group-label">Size charts</span>
+            <div class="prod-tool-buttons">
+                <form method="POST" action="{{ url_for('admin.fill_size_charts') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="prod-tool-btn"
+                            onclick="return confirm('Fill in each style's own size chart from the manufacturer measurements? Styles that already have a chart are left alone. You will get a note in your inbox when it is done.')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg>
+                        Fill in size charts
+                    </button>
+                </form>
+            </div>
+        </div>
+
     </div>
 </details>
 
