@@ -381,6 +381,16 @@ def add():
         from utils.print_scale import oversized_allowed
         if oversized_allowed(product, size, 'center_back'):
             back_design_meta = {'scale': 'oversized'}             # an extra-large picture across the whole back
+    # Where the customer moved the back picture, in inches from its starting spot (right and down are plus).
+    _back_offset = None
+    if back_design_url and not (_bd_name or _bd_number) and not _bd_upper:
+        try:
+            _ox = max(-6.0, min(6.0, float(data.get('back_offset_x_in') or 0)))
+            _oy = max(-12.0, min(12.0, float(data.get('back_offset_y_in') or 0)))
+            if abs(_ox) >= 0.05 or abs(_oy) >= 0.05:
+                _back_offset = {'x_in': round(_ox, 2), 'y_in': round(_oy, 2)}
+        except (TypeError, ValueError):
+            _back_offset = None
     # A stacked name with a small image under the collar: one transfer, the image on top of the letters. The upload
     # then holds the small image, not a picture of the name.
     _neck_aspect = None
@@ -571,6 +581,12 @@ def add():
         print_scale=print_scale,
     )
 
+    # A picture across the back (not a name, number or the small one under the collar): keep the planned size and placement.
+    if back_design_url and back_design_kind == 'image' and not (_bd_name or _bd_number) and not _bd_upper and not _neck_aspect:
+        from utils.print_sizes import back_print_plan
+        transfer_production['back_print'] = back_print_plan(
+            product, size, back_design_url, scale=(back_design_meta or {}).get('scale'), offset=_back_offset, quantity=quantity)
+
     if back_design_meta and transfer_production.get('back'):
         from utils.personalization_layout import enrich_back_snapshot
         back = transfer_production.get('back') or {}
@@ -685,6 +701,7 @@ def add():
             (item.get('print_scale') or 'standard') == print_scale and
             item.get('back_design_url') == back_design_url and
             item.get('back_design_meta') == back_design_meta and
+            (((item.get('transfer_production') or {}).get('back') or {}).get('placement_offset') or None) == _back_offset and
             item.get('catalog_section') == catalog_section and
             item.get('uniform_kit') == uniform_kit and
             (item.get('collection_id') or None) == new_cid):

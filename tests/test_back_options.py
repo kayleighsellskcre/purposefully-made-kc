@@ -251,3 +251,11 @@ def test_back_picture_has_left_right_nudge_buttons_with_limits():
         assert ident in page
     assert 'state.backDesignDragOffset.y' not in page         # the old code broke when the offset was reset to nothing
 
+
+
+def test_the_customizer_offers_to_soften_a_hard_right_edge_and_prices_the_oversized_back_as_one_charge():
+    page = (Path(__file__).resolve().parent.parent / 'templates' / 'shop' / 'customize.html').read_text(encoding='utf-8')
+    for ident in ('backFadeOffer', 'backFadeYes', 'backFadeNo', 'backFadeUndo', 'touchesRightEdge', 'fadeRightEdgeBlob',
+                  'oversizedBackFee', 'back_offset_x_in', 'back_offset_y_in'):
+        assert ident in page
+    assert 'oversizedBackExtra' not in page                  # the old add-on is gone: the oversized back is one charge

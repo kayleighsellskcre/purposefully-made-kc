@@ -243,6 +243,8 @@ def site_settings():
             from utils import print_scale as PSC
             try:
                 PSC.save_adjustments(request.form.get('medium_adjust'), request.form.get('oversized_adjust'))
+                if (request.form.get('back_oversized_price') or '').strip() != '':
+                    PSC.save_back_oversized_price(request.form.get('back_oversized_price'))
                 flash('Saved. New carts use these print size prices.', 'success')
             except (TypeError, ValueError):
                 flash('Enter dollar amounts like -1 or 6.', 'error')
@@ -331,7 +333,7 @@ def site_settings():
         size_rows.append({'key': key, 'label': label, 'hint': PSC.HINTS[key], 'width': w['width_display'], 'height': w['height_display'],
                           'cost': round(w['width'] * w['height'] * rate, 2)})
     return render_template('admin/operations/site_settings.html',
-                           print_size_rows=size_rows, print_adjust=PSC.adjustments(),
+                           print_size_rows=size_rows, print_adjust=PSC.adjustments(), back_oversized_price=PSC.back_oversized_price(),
                            business_days=ready_date.get_business_days(),
                            preview=ready_date.format_day(ready_date.ready_by()),
                            min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS,

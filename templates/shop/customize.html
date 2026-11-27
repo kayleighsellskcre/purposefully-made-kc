@@ -346,6 +346,12 @@
     white-space: nowrap;
 }
 
+/* Offer to soften a picture's right edge */
+.back-fade-offer { margin: 0.75rem 0; padding: 0.85rem 1rem; border: 1px solid var(--border-color, #e3d6c6); border-radius: 12px; background: #fffaf3; }
+.back-fade-offer p { margin: 0 0 0.6rem; font-size: 0.9rem; line-height: 1.45; }
+.back-fade-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.back-fade-done { margin: 0 !important; }
+.back-fade-undo { background: none; border: 0; padding: 0; color: var(--btn-rose, #a1574d); text-decoration: underline; cursor: pointer; font: inherit; }
 /* Back design colour & outline controls */
 .bd-color-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 .bd-color-input {
@@ -2779,6 +2785,14 @@
                                 <p class="text-muted">PNG, JPG, WEBP (Max 15MB)</p>
                                 <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;" id="backImageMove">Starts centered in the upper back area. Drag it, or use the arrows, to move it a little. It stays inside the printable part of the shirt.</p>
                             </div>
+                            <div class="back-fade-offer" id="backFadeOffer" hidden>
+                                <p><strong>Soften the right edge?</strong> This picture runs right up to its edge. We can fade that edge gently into the shirt so it blends in.</p>
+                                <div class="back-fade-buttons">
+                                    <button type="button" class="btn btn-primary btn-sm" id="backFadeYes">Yes, soften it</button>
+                                    <button type="button" class="btn btn-outline btn-sm" id="backFadeNo">No, keep it as it is</button>
+                                </div>
+                                <p class="back-fade-done" id="backFadeDone" hidden>The right edge is softened. <button type="button" class="back-fade-undo" id="backFadeUndo">Use my original instead</button></p>
+                            </div>
                             <input type="file" id="designFileBack" aria-label="Upload a back design" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                             {% if allow_stacked_name %}
                             <div class="back-stack-opt" id="backStackWrap" hidden>
@@ -2841,7 +2855,7 @@
                         <span style="color: var(--terra-cotta-text, #9A5F52); font-weight: 600;" id="sizeUpchargeAmount"></span>
                     </div>
                     <div class="price-row" id="backDesignFeeRow" style="display: none;">
-                        <span>Back Design Fee:</span>
+                        <span id="backDesignFeeLabel">Back Design Fee:</span>
                         <span id="backDesignFeeAmount" style="color: var(--terra-cotta-text, #9A5F52); font-weight: 600;">+$6.00</span>
                     </div>
                     <div class="price-row">
@@ -4543,7 +4557,7 @@
         }
         const maxH = 60;
         const isTank = !!(TRANSFER_SIZING && TRANSFER_SIZING.is_tank);
-        const bs = isOversizedBackImage() ? ((SCALE_CFG && SCALE_CFG.factors && SCALE_CFG.factors.oversized) || 1.3) : 1;    // Oversized is 1.3 times the standard width
+        const bs = isOversizedBackImage() ? backOversizedFactor() : 1;    // the Oversized Full Back is 1.45 times the standard width (set in utils/print_scale.py)
         const maxVsGarment = garmentWidth * bs * (isTank ? 0.70 : 0.56);
         const maxVsCanvas = canvasWidth * bs * 0.5;
         const minVsGarment = garmentWidth * bs * (isTank ? 0.42 : 0.28);
@@ -5151,7 +5165,107 @@
     function isOversizedBackImage() {
         return state.backDesignMode === 'upload' && state.backDesignSize === 'oversized' && backOversizedOk();
     }
-    function oversizedBackExtra() { return Number((SCALE_CFG && SCALE_CFG.adjust && SCALE_CFG.adjust.oversized) || 0); }
+    // ---- Soften the right edge: offered only when the picture runs right up to its right edge ----
+    const BACK_FADE_SHARE = 0.14;          // how much of the width, from the right edge, fades out
+    function hideBackFadeOffer() {
+        const box = document.getElementById('backFadeOffer');
+        if (box) box.hidden = true;
+        state.backDesignFaded = false;
+    }
+    function loadImageForFade(url) {
+        return new Promise(function (resolve, reject) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function () { resolve(img); };
+            img.onerror = reject;
+            img.src = url;
+        });
+    }
+    function touchesRightEdge(img) {
+        try {
+            const w = Math.min(400, img.naturalWidth), h = Math.max(1, Math.round(img.naturalHeight * w / img.naturalWidth));
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            const ctx = c.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, 0, 0, w, h);
+            const strip = Math.max(2, Math.round(w * 0.015));
+            const data = ctx.getImageData(w - strip, 0, strip, h).data;
+            let solid = 0;
+            for (let i = 3; i < data.length; i += 4) { if (data[i] > 200) solid += 1; }
+            return solid / (data.length / 4) > 0.04;      // a real part of the picture sits against the right edge
+        } catch (e) { return false; }
+    }
+    async function fadeRightEdgeBlob(img) {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const fadePx = Math.round(c.width * BACK_FADE_SHARE);
+        const g = ctx.createLinearGradient(c.width - fadePx, 0, c.width, 0);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(0.55, 'rgba(0,0,0,0.35)');
+        g.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.globalCompositeOperation = 'destination-out';      // erase more and more toward the edge, so it melts into the shirt
+        ctx.fillStyle = g;
+        ctx.fillRect(c.width - fadePx, 0, fadePx, c.height);
+        return new Promise(function (resolve) { c.toBlob(resolve, 'image/png'); });
+    }
+    async function uploadBackImageBlob(blob, name) {
+        const formData = new FormData();
+        formData.append('file', new File([blob], name, { type: 'image/png' }));
+        formData.append('bg_removal', 'none');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const response = await fetch('/design/upload', { method: 'POST', body: formData, headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {} });
+        const data = await response.json().catch(function () { return {}; });
+        if (!response.ok || !data.url) throw new Error(data.error || 'Upload failed');
+        return data.url;
+    }
+    function useBackImageUrl(url) {
+        state.backDesignUrl = url;
+        const thumb = document.getElementById('designPreviewImageBack');
+        if (thumb) thumb.src = url;
+        updateBackDesignPreview();
+        updateDesignLayerVisibility();
+        refreshAddToCartButton();
+    }
+    async function offerBackFade(url) {
+        const box = document.getElementById('backFadeOffer');
+        if (!box || isSmallBackImage() || state.backDesignMode !== 'upload') return;
+        let img;
+        try { img = await loadImageForFade(url); } catch (e) { return; }
+        if (!img.naturalWidth || !touchesRightEdge(img)) return;
+        const yes = document.getElementById('backFadeYes'), no = document.getElementById('backFadeNo');
+        const done = document.getElementById('backFadeDone'), undo = document.getElementById('backFadeUndo');
+        box.hidden = false; done.hidden = true;
+        yes.hidden = false; no.hidden = false; yes.disabled = false;
+        yes.onclick = async function () {
+            yes.disabled = true; yes.textContent = 'Softening...';
+            try {
+                const blob = await fadeRightEdgeBlob(img);
+                const fadedUrl = await uploadBackImageBlob(blob, 'back-soft-edge.png');
+                state.backDesignFadedUrl = fadedUrl;
+                useBackImageUrl(fadedUrl);
+                state.backDesignFaded = true;
+                yes.hidden = true; no.hidden = true; done.hidden = false;
+            } catch (e) {
+                PMKC.showFlash('We could not soften the edge. Your picture is unchanged.', 'error');
+            }
+            yes.disabled = false; yes.textContent = 'Yes, soften it';
+        };
+        no.onclick = function () { box.hidden = true; };
+        undo.onclick = function () {
+            useBackImageUrl(state.backDesignOriginalUrl || url);
+            state.backDesignFaded = false;
+            yes.hidden = false; no.hidden = false; done.hidden = true;
+        };
+    }
+
+    function backOversizedFactor() { return Number((SCALE_CFG && SCALE_CFG.factors && (SCALE_CFG.factors.back_oversized || SCALE_CFG.factors.oversized)) || 1.45); }
+    // The Oversized Full Back has one price of its own. It replaces the regular back print charge, it is not added to it.
+    function oversizedBackFee() {
+        const v = SCALE_CFG && SCALE_CFG.back_oversized_price;
+        return (v === undefined || v === null) ? (state.backDesignFee + Number((SCALE_CFG && SCALE_CFG.adjust && SCALE_CFG.adjust.oversized) || 0)) : Number(v);
+    }
+    function oversizedBackWidthText() { return (10 * backOversizedFactor()).toFixed(1).replace(/\.0$/, ''); }
 
     // A name stacked down the back: the same numbers the server uses (utils/print_sizes.vertical_name_layout).
     function verticalLetters(name) {
@@ -5193,8 +5307,21 @@
             outlineColor: val('backDesignOutlineColor', state.backDesignOutlineColor || '#000000'),
         };
     }
+    function backOffsetInches() {
+        const box = garmentBox();
+        if (!box || !box.pxPerInch || state.backDesignMode !== 'upload' || !state.backDesignUrl || isSmallBackImage()) return null;
+        const layer = document.getElementById('backDesignLayer');
+        const start = clampBackOffset({ x: 0, y: -(state.backDesignDefaultUpOffset ?? 0) }, box, layer);
+        const now = backOffset();
+        return { x: (now.x - start.x) / box.pxPerInch, y: (now.y - start.y) / box.pxPerInch };
+    }
     function appendSmallBackFields(formData) {
         if (isOversizedBackImage()) formData.append('back_design_scale', 'oversized');
+        const moved = backOffsetInches();
+        if (moved) {
+            formData.append('back_offset_x_in', moved.x.toFixed(2));
+            formData.append('back_offset_y_in', moved.y.toFixed(2));
+        }
         if (!isSmallBackImage()) return;
         formData.append('back_design_position', 'upper');
         const name = comboStackName();
@@ -5218,7 +5345,7 @@
                 + Number(Boolean((state.backDesignNumber || '').trim()));
             return parts * 3;
         }
-        if (isOversizedBackImage()) return state.backDesignFee + oversizedBackExtra();
+        if (isOversizedBackImage()) return oversizedBackFee();
         return state.backDesignFee;
     }
     
@@ -5325,6 +5452,8 @@
         itemPrice += backFee;
         const backFeeAmount = document.getElementById('backDesignFeeAmount');
         if (backFeeAmount) backFeeAmount.textContent = '+$' + backFee.toFixed(2);
+        const backFeeLabel = document.getElementById('backDesignFeeLabel');
+        if (backFeeLabel) backFeeLabel.textContent = isOversizedBackImage() ? 'Oversized Full Back:' : 'Back Design Fee:';
         if (backDesignFeeRow) {
             backDesignFeeRow.style.display = backFee > 0 ? 'flex' : 'none';
         }
@@ -6048,7 +6177,7 @@
                     if (hint) hint.textContent = small
                         ? 'A small image printed on the upper back, just under the collar, about 4 inches wide. $3.'
                         : (over
-                            ? 'An extra-large image printed across the whole back, about 13 inches wide on an adult medium. $' + (state.backDesignFee + oversizedBackExtra()).toFixed(0) + '.'
+                            ? 'Oversized Full Back: an extra-large image across the whole back, about ' + oversizedBackWidthText() + ' inches wide on an adult medium. $' + oversizedBackFee().toFixed(0) + '.'
                             : 'A large image printed across the back. $6.');
                     if (move) move.style.display = small ? 'none' : '';
                     const stackWrap = document.getElementById('backStackWrap');
@@ -6104,6 +6233,8 @@
                 
                 state.backDesignFile = file;
                 state.backDesignUrl = data.url;
+                state.backDesignOriginalUrl = data.url;
+                hideBackFadeOffer();
                 
                 document.getElementById('designPreviewImageBack').src = data.url;
                 designPreviewBack.classList.add('active');
@@ -6115,6 +6246,7 @@
                 
                 uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Back design uploaded!</strong></p><p class="text-muted">Click to change</p>';
                 uploadAreaBack.style.pointerEvents = '';
+                offerBackFade(data.url);
                 
             } catch (error) {
                 let msg = (error.message || 'Upload failed');
@@ -6134,6 +6266,7 @@
                 designPreviewBack.style.display = 'none';
                 state.backDesignFile = null;
                 state.backDesignUrl = null;
+                hideBackFadeOffer();
                 updateDesignLayerVisibility();
                 updateTotalPrice();
                 refreshAddToCartButton();

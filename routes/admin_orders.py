@@ -499,6 +499,7 @@ def _collect_press_shirts(orders):
             front_m, back_m = mockup_urls(getattr(item, 'product', None), getattr(item, 'color', None))
             front = prod.get('front') or None
             back = prod.get('back') or None
+            back_print = prod.get('back_print') or None
             for copy_index in range(qty):
                 piece_index += 1
                 shirts.append({
@@ -519,6 +520,7 @@ def _collect_press_shirts(orders):
                     'style_number': getattr(item, 'style_number', None),
                     'front': front,
                     'back': back,
+                    'back_print': back_print,
                     'front_mockup_url': front_m,
                     'back_mockup_url': back_m or front_m,
                     'front_overlay_url': front_print_url(item) if front else None,

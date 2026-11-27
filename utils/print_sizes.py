@@ -538,7 +538,7 @@ def front_transfer_size(size, product=None, placement='center_chest', aspect_w=N
         chart_width = 7.5 if classify_age(product, size) == 'youth' else 10.0
     if scale == 'oversized':
         chart_width = chart_width_for_size(size, product) or chart_width      # a big print is not held back by the hoodie pocket rule
-    width = chart_width * placement_width_factor(placement) * _ps.WIDTH_FACTOR[scale]
+    width = chart_width * placement_width_factor(placement) * _ps.width_factor(scale, placement)
     if aspect_w and aspect_h:
         height = height_from_width(width, aspect_w, aspect_h)
     else:
@@ -547,7 +547,7 @@ def front_transfer_size(size, product=None, placement='center_chest', aspect_w=N
     max_w = safe_print_width(size, product, placement)
     if scale == 'oversized':
         max_h = max(max_h, _ps.OVERSIZED_SAFE_HEIGHT_ADULT)
-        max_w = max_w * _ps.WIDTH_FACTOR['oversized']
+        max_w = max_w * _ps.width_factor('oversized', placement)
     exceeds = bool(width > max_w + 0.001 or height > max_h + 0.001)
     return {
         'order_by': 'WIDTH',
@@ -745,7 +745,8 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
 def _print_scale_config(product=None):
     """What the customizer needs for the Medium / Standard / Oversized choice."""
     from utils import print_scale as _ps
-    return {'factors': _ps.WIDTH_FACTOR, 'adjust': _ps.adjustments(), 'hints': _ps.HINTS,
+    return {'factors': dict(_ps.WIDTH_FACTOR, back_oversized=_ps.BACK_OVERSIZED_FACTOR), 'adjust': _ps.adjustments(), 'hints': _ps.HINTS,
+            'back_oversized_price': _ps.back_oversized_price(),
             'oversized_ok': _ps.oversized_allowed(product, None, 'center_back')}
 
 
@@ -968,6 +969,26 @@ def build_item_production(
     return payload
 
 
+def back_print_plan(product, size, image_url, scale=None, offset=None, quantity=1):
+    """What to order for a picture printed across the back: the print option, the planned size in inches, and where the
+    customer placed it. Kept on its own (the name and number back layout is untouched) so the order page can show it."""
+    from utils import print_scale as _ps
+    from utils.personalization_layout import art_aspect
+    key = _ps.effective(scale, product, size, 'center_back')
+    aspect = art_aspect(image_url) or 1.0
+    big = front_transfer_size(size, product, 'center_back', aspect, 1.0, scale=key)
+    plan = {
+        'kind': 'image', 'back_image_url': image_url, 'placement': 'center_back',
+        'placement_label': _with_scale('Center Back', key), 'print_scale': key, 'order_by': 'WIDTH',
+        'width': big['width'], 'height': big['height'], 'width_display': big['width_display'],
+        'height_display': big['height_display'], 'exceeds_safe_area': big['exceeds_safe_area'],
+        'safe_width': big.get('safe_width'), 'safe_height': big.get('safe_height'), 'quantity': int(quantity or 1),
+    }
+    if offset:
+        plan['placement_offset'] = offset
+    return plan
+
+
 def production_from_stored(stored, quantity=None):
     """Refresh display rounding on a stored snapshot. Quantity can be updated."""
     if not stored:
@@ -987,6 +1008,7 @@ def production_from_stored(stored, quantity=None):
 def production_from_order_item(item, customer_name=None):
     """Stored snapshot if present, otherwise recompute from the line item."""
     stored = None
+    kept_plan = None
     raw = getattr(item, 'transfer_production', None)
     if raw:
         if isinstance(raw, dict):
@@ -999,6 +1021,7 @@ def production_from_order_item(item, customer_name=None):
                 stored = None
     if stored:
         stored_data = production_from_stored(stored, quantity=getattr(item, 'quantity', None))
+        kept_plan = stored_data.get('back_print')          # the planned back picture size and placement survive a recompute
         # If the stored snapshot has no back but the item actually has a back design,
         # the snapshot was saved before image-back support was added — recompute it.
         if stored_data.get('back') is None:
@@ -1035,7 +1058,7 @@ def production_from_order_item(item, customer_name=None):
     if not (back.get('name') or back.get('number')):
         back_image_url = getattr(item, 'back_design_file_name', None) or None
 
-    return build_item_production(
+    payload = build_item_production(
         product=product,
         size=getattr(item, 'size', None),
         color=getattr(item, 'color', None),
@@ -1064,6 +1087,9 @@ def production_from_order_item(item, customer_name=None):
         measured_number_width=back.get('number_width_natural') or back.get('number_width'),
         garment_style=getattr(item, 'product_name', None),
     )
+    if kept_plan:
+        payload['back_print'] = kept_plan
+    return payload
 
 
 def group_production_rows(rows, group_by='design'):

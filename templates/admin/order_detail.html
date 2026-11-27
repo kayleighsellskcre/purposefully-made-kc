@@ -590,8 +590,8 @@
         </div>
 
         {% for item, prod, kit, layout in item_productions %}
-        {% if prod and (prod.front or prod.back) %}
-        <div class="od-xfer{% if (prod.front and prod.front.exceeds_safe_area) or (prod.back and prod.back.exceeds_safe_area) %} od-xfer-flag{% endif %}">
+        {% if prod and (prod.front or prod.back or prod.back_print) %}
+        <div class="od-xfer{% if (prod.front and prod.front.exceeds_safe_area) or (prod.back and prod.back.exceeds_safe_area) or (prod.back_print and prod.back_print.exceeds_safe_area) %} od-xfer-flag{% endif %}">
             <div class="od-xfer-itemhead">
                 <strong>{{ item.product_name }}</strong>
                 <span>{% if item.catalog_section == 'uniform' %}{{ (item.uniform_kit or 'Player')|title }} Uniform · {% elif item.catalog_section == 'fan' %}Fan Wear · {% endif %}{{ item.color }} · {{ (prod.front.age_group if prod.front else (prod.back.age_group if prod.back else ''))|title }} {{ item.size }} · Qty {{ item.quantity }}</span>
@@ -614,7 +614,7 @@
                     {% if prod.front.exceeds_safe_area %}<p class="od-xfer-warn">Exceeds safe printable area for this size.</p>{% endif %}
                 </section>
                 {% endif %}
-                {% if prod.back %}
+                {% if prod.back and prod.back.kind != 'image' %}
                 <section class="od-xfer-card">
                     <h3>BACK NAME</h3>
                     {% if prod.back.name %}
@@ -671,6 +671,28 @@
                     {% if prod.back.exceeds_safe_area %}<p class="od-xfer-warn">Exceeds safe printable area for this size.</p>{% endif %}
                     <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Download combined PNG</a>
                     <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
+                </section>
+                {% endif %}
+                {% if prod.back_print %}
+                {% set bp = prod.back_print %}
+                <section class="od-xfer-card">
+                    <h3>BACK PRINT</h3>
+                    <div class="pm-print-preview od-piece-preview">
+                        <img src="{{ bp.back_image_url }}" alt="Back picture" style="max-height:14rem;object-fit:contain;">
+                    </div>
+                    <dl>
+                        <div><dt>Print option</dt><dd>{% if bp.print_scale == 'oversized' %}Oversized Full Back{% elif bp.print_scale == 'medium' %}Medium back print{% else %}Standard back print{% endif %}</dd></div>
+                        <div><dt>Planned size</dt><dd>{{ bp.width_display }}″ W × {{ bp.height_display }}″ H</dd></div>
+                        <div><dt>Placement</dt><dd>Center back{% if bp.placement_offset %}, moved
+                            {% if bp.placement_offset.x_in %}{{ bp.placement_offset.x_in|abs }}″ {{ 'right' if bp.placement_offset.x_in > 0 else 'left' }}{% endif %}
+                            {% if bp.placement_offset.x_in and bp.placement_offset.y_in %} and {% endif %}
+                            {% if bp.placement_offset.y_in %}{{ bp.placement_offset.y_in|abs }}″ {{ 'down' if bp.placement_offset.y_in > 0 else 'up' }}{% endif %}
+                            from the starting spot{% else %}, at the starting spot{% endif %}</dd></div>
+                        <div><dt>Order by</dt><dd>WIDTH</dd></div>
+                        <div><dt>Quantity</dt><dd>{{ bp.quantity }}</dd></div>
+                    </dl>
+                    {% if bp.exceeds_safe_area %}<p class="od-xfer-warn">Larger than the safe printable area for this size. Check before ordering the transfer.</p>{% endif %}
+                    <a class="od-btn od-btn-save" href="{{ bp.back_image_url }}" target="_blank" rel="noopener">Open back picture</a>
                 </section>
                 {% endif %}
             </div>

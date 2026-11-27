@@ -34,9 +34,10 @@ SINGLE_BACK_DESIGN_FEE = 3.00
 BLANK_ITEM_DISCOUNT = 12.00
 
 
-def adjustments_for_back():
-    from utils.print_scale import adjustments
-    return float(adjustments().get('oversized', 0.0))
+def oversized_back_fee():
+    """The whole charge for an Oversized Full Back. It replaces the regular back print charge, it is not added to it."""
+    from utils.print_scale import back_oversized_price
+    return float(back_oversized_price())
 
 
 def size_surcharge(product, size):
@@ -78,18 +79,21 @@ def calculate_unit_price(
     if not is_blank:
         price += price_adjustment(print_scale, placement, product, size)
 
-    # A back picture can be Oversized too (a large image across the whole back): the same price change as the main print.
+    # An Oversized Full Back (a large image across the whole back) has its own price, which takes the place of the regular back charge.
+    oversized_back = False
     if has_back_design and back_design_parts is None and not is_blank and back_scale == 'oversized':
         from utils.print_scale import oversized_allowed
-        if oversized_allowed(product, size, 'center_back'):
-            price += adjustments_for_back()
+        oversized_back = oversized_allowed(product, size, 'center_back')
 
     if has_back_design:
-        price += (
-            SINGLE_BACK_DESIGN_FEE
-            if back_design_parts == 1
-            else BACK_DESIGN_FEE
-        )
+        if oversized_back:
+            price += oversized_back_fee()
+        else:
+            price += (
+                SINGLE_BACK_DESIGN_FEE
+                if back_design_parts == 1
+                else BACK_DESIGN_FEE
+            )
 
     if is_blank:
         # A blank cannot also carry a back design, but clamp anyway so a bad

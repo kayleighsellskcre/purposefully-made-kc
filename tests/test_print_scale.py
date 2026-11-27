@@ -10,7 +10,7 @@ def test_widths_follow_the_standard_chart(app, seed):
     assert std == 10.0
     assert PS.front_transfer_size('M', None, 'center_chest', scale='medium')['width'] == 6.0
     big = PS.front_transfer_size('M', None, 'center_back', scale='oversized')
-    assert big['width'] == 13.0 and big['scale'] == 'oversized'
+    assert big['width'] == 14.5 and big['scale'] == 'oversized'      # the Oversized Full Back is 1.45 of the chart width
     # medium sits between a chest logo (4 in) and standard
     assert PS.front_transfer_size('M', None, 'left_chest')['width'] < 6.0 < std
 
@@ -73,7 +73,7 @@ def test_adding_to_the_cart_keeps_the_print_size_and_charges_for_it(app, seed, c
     assert line['print_scale'] == 'oversized' and line['unit_price'] == base + 6
     assert line['transfer_production']['front']['print_scale'] == 'oversized'
     assert line['transfer_production']['front']['placement_label'] == 'Center Back · Oversized'
-    assert line['transfer_production']['front']['width'] == 13.0           # the transfer sheet shows what to order
+    assert line['transfer_production']['front']['width'] == 14.5           # the transfer sheet shows what to order
 
 
 def test_a_size_that_does_not_fit_quietly_becomes_standard(app, seed, client):
@@ -124,8 +124,8 @@ def test_an_oversized_back_picture_costs_more_and_is_ordered_bigger(client, seed
         item = dict(sess['cart'][0])
     try:
         assert item['back_design_meta'] == {'scale': 'oversized'}
-        assert item['unit_price'] == 30.00 + 6.00 + 6.00                     # base, the $6 back picture, the $6 oversized price
-        assert PS.front_transfer_size('M', None, 'center_back', scale='oversized')['width'] == 13.0
+        assert item['unit_price'] == 30.00 + 12.00                           # base + the Oversized Full Back price, which replaces the $6 back charge
+        assert PS.front_transfer_size('M', None, 'center_back', scale='oversized')['width'] == 14.5
     finally:
         Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)
 
@@ -146,3 +146,57 @@ def test_the_back_options_are_labelled_and_the_picked_one_stays_readable(app, se
     from pathlib import Path
     css = Path('static/css/main.css').read_text(encoding='utf-8')
     assert 'body:not(.is-admin) .back-design-tab.active { color: #fff; }' in css
+
+
+def test_the_oversized_back_price_is_one_editable_charge_that_replaces_the_back_fee(app, seed):
+    from utils import print_scale as PSC
+    with app.app_context():
+        tee = db.session.get(Product, seed['tee_id'])
+        assert PSC.back_oversized_price() == 12.00                           # starts where $6 + $6 was
+        standard = calculate_unit_price(tee, size='M', placement='center_chest', has_back_design=True, back_scale=None)
+        big = calculate_unit_price(tee, size='M', placement='center_chest', has_back_design=True, back_scale='oversized')
+        assert standard == 30.00 + 6.00 and big == 30.00 + 12.00
+        PSC.save_back_oversized_price('18')
+        big = calculate_unit_price(tee, size='M', placement='center_chest', has_back_design=True, back_scale='oversized')
+        assert big == 30.00 + 18.00                                          # not 30 + 6 + 18
+        db.session.rollback()
+        PSC.save_back_oversized_price('12')
+
+
+def test_an_oversized_back_picture_saves_its_planned_size_and_placement(client, seed):
+    from io import BytesIO
+    from pathlib import Path
+    from tests.test_back_options import _add, _png_bytes
+    _add(client, product_id=seed['tee_id'], size='M', color='Black', quantity=1, placement='center_chest',
+         design_id=seed['free_design_id'], back_design_scale='oversized', back_offset_x_in='0.5', back_offset_y_in='-1.25',
+         back_design=(BytesIO(_png_bytes()), 'big.png'))
+    with client.session_transaction() as sess:
+        item = dict(sess['cart'][0])
+    try:
+        back = item['transfer_production']['back_print']
+        assert back['print_scale'] == 'oversized' and back['kind'] == 'image'
+        assert back['width'] == 14.5 and back['height'] > 0 and back['width_display']
+        assert back['placement_offset'] == {'x_in': 0.5, 'y_in': -1.25}
+    finally:
+        Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)
+
+
+def test_the_order_page_shows_the_planned_back_print(app, seed, admin_client):
+    """An order with an Oversized Full Back shows the option, planned size and placement, and keeps them on recompute."""
+    import json
+    from models import Order, OrderItem
+    from tests.test_proofs import _in_db, _order
+    plan = {'kind': 'image', 'back_image_url': '/static/img/logo.png', 'placement': 'center_back', 'placement_label': 'Center Back - Oversized',
+            'print_scale': 'oversized', 'order_by': 'WIDTH', 'width': 14.5, 'height': 19.0, 'width_display': '14 1/2', 'height_display': '19',
+            'exceeds_safe_area': False, 'quantity': 1, 'placement_offset': {'x_in': 0.5, 'y_in': -1.25}}
+
+    def make():
+        order = _order('BP1')
+        db.session.add(OrderItem(order_id=order.id, product_id=seed['tee_id'], product_name='Tee', size='M', color='Black', quantity=1,
+                                 unit_price=42.0, subtotal=42.0, placement='center_chest', back_design_file_name='/static/img/logo.png',
+                                 transfer_production=json.dumps({'front': None, 'back': None, 'back_print': plan, 'quantity': 1})))
+        db.session.commit()
+        return order.id
+    oid = _in_db(app, make)
+    page = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
+    assert 'Oversized Full Back' in page and '14 1/2' in page and '0.5' in page and 'right' in page and 'up' in page

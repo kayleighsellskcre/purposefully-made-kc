@@ -136,6 +136,9 @@
                     {% endif %}
                 </p>
                 {% endif %}
+                {% if shirt.back_print %}
+                <p><span class="xfer-tag">BACK</span> {{ shirt.back_print.placement_label }} · <strong>{{ shirt.back_print.width_display }}″ × {{ shirt.back_print.height_display }}″</strong>{% if shirt.back_print.placement_offset %} · moved{% if shirt.back_print.placement_offset.x_in %} {{ shirt.back_print.placement_offset.x_in|abs }}″ {{ 'right' if shirt.back_print.placement_offset.x_in > 0 else 'left' }}{% endif %}{% if shirt.back_print.placement_offset.y_in %} {{ shirt.back_print.placement_offset.y_in|abs }}″ {{ 'down' if shirt.back_print.placement_offset.y_in > 0 else 'up' }}{% endif %}{% endif %}</p>
+                {% endif %}
                 {% if shirt.exceeds_safe_area %}<p class="xfer-warn">OVERSIZE: check before pressing</p>{% endif %}
             </div>
         </article>
