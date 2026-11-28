@@ -548,9 +548,10 @@ def review(token):
             else:
                 row = Review(order_id=order.id, name=form['name'], body=form['body'] or None,
                              photos=json.dumps(urls) if urls else None,
-                             photos_ok=bool(urls) and form['photos_ok'], status='pending')
+                             photos_ok=bool(urls) and form['photos_ok'], status='approved')
                 db.session.add(row)
                 db.session.commit()
+                _review_went_live()
                 _alert_owner_of_review(row, order)
                 return redirect(url_for('main.review_thanks', token=token))
     return render_template('review/form.html', order=order, form=form, errors=errors,
@@ -611,10 +612,11 @@ def review_general():
         if fields:
             row = Review(order_id=None, source='general', email=fields.get('email') or None, name=fields['name'],
                          body=fields['body'] or None, photos=json.dumps(urls) if urls else None,
-                         photos_ok=bool(urls) and fields['photos_ok'], status='pending')
+                         photos_ok=bool(urls) and fields['photos_ok'], status='approved')
             db.session.add(row)
             db.session.commit()
             session['general_reviews_sent'] = sent + 1
+            _review_went_live()
             _alert_owner_of_review(row, None)
             return redirect(url_for('main.review_general_thanks'))
     return render_template('review/form.html', order=None, invoice=None, general=True, form=form, errors=errors,
@@ -645,13 +647,23 @@ def review_invoice(token):
         if fields:
             row = Review(order_id=None, invoice_id=invoice.id, source='invoice', name=fields['name'],
                          body=fields['body'] or None, photos=json.dumps(urls) if urls else None,
-                         photos_ok=bool(urls) and fields['photos_ok'], status='pending')
+                         photos_ok=bool(urls) and fields['photos_ok'], status='approved')
             db.session.add(row)
             db.session.commit()
+            _review_went_live()
             _alert_owner_of_review(row, None, invoice=invoice)
             return redirect(url_for('main.review_general_thanks'))
     return render_template('review/form.html', order=None, invoice=invoice, general=False, form=form, errors=errors,
                            photo_limit=_REVIEW_PHOTO_LIMIT)
+
+
+def _review_went_live():
+    """New reviews show on the site right away, so refresh the cached list."""
+    try:
+        from utils.reviews_public import clear_cache
+        clear_cache()
+    except Exception:
+        current_app.logger.exception('review cache clear failed')
 
 
 def _alert_owner_of_review(row, order, invoice=None):
@@ -662,11 +674,11 @@ def _alert_owner_of_review(row, order, invoice=None):
         to = admin_recipient(current_app)
         if not to:
             return
-        _send(to, 'A new review is waiting for you', 'A new review is waiting',
+        _send(to, 'You have a new review', 'You have a new review',
               [f'{row.name} shared a review for order {order.order_number}.' if order is not None else
                (f'{row.name} shared a review for invoice {invoice.number}.' if invoice is not None
                 else f'{row.name} left a review through your review link.'),
-               'It will not show on the website until you approve it.'],
+               'It is already on your website. You can hide it any time from your Reviews page.'],
               details=[('Review', (row.body or 'Photos only')[:200])],
               button={'label': 'Open reviews', 'url': url_for('admin.reviews', _external=True)})
     except Exception:

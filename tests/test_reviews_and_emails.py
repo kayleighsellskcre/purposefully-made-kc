@@ -207,7 +207,7 @@ def test_review_with_words_and_photos_waits_for_approval(guest, app, seed, fake_
     }, content_type='multipart/form-data')
     assert resp.status_code == 302 and resp.headers['Location'].endswith(f'/review/{token}/thanks')
     row = _in_db(app, lambda: (lambda r: (r.status, r.photo_urls(), r.photos_ok, r.body))(Review.query.first()))
-    assert row == ('pending', ['https://cdn.example/reviews/me.png'], True, 'We love them!')
+    assert row == ('approved', ['https://cdn.example/reviews/me.png'], True, 'We love them!')
     # a second visit does not allow a second review
     assert 'already have your review' in guest.get(f'/review/{token}').get_data(as_text=True)
     assert 'Thank You' in guest.get(f'/review/{token}/thanks').get_data(as_text=True)
@@ -238,7 +238,7 @@ def test_only_approved_reviews_reach_the_homepage(admin_client, app, seed):
 def test_admin_can_approve_hide_and_delete(admin_client, app, seed):
     rid = _in_db(app, lambda: (lambda r: (db.session.add(r), db.session.commit(), r.id)[2])(Review(name='Amy K.', body='Hi', status='pending')))
     page = admin_client.get('/admin/operations/reviews').get_data(as_text=True)
-    assert 'Amy K.' in page and '1 waiting for you' in page
+    assert 'Amy K.' in page and 'Show on site' in page
     admin_client.post('/admin/operations/reviews', data={'review_id': rid, 'action': 'approve'})
     assert _in_db(app, lambda: db.session.get(Review, rid).status) == 'approved'
     admin_client.post('/admin/operations/reviews', data={'review_id': rid, 'action': 'hide'})

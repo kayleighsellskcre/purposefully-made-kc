@@ -196,7 +196,7 @@ table.rc-items { width: 100%; border-collapse: collapse; }
             {% if invoice.phone %}<a href="sms:{{ invoice.phone }}?&body={{ rv_msg | urlencode }}" class="rc-textbtn">Text it</a>{% endif %}
             {% if invoice.email %}<a href="mailto:{{ invoice.email }}?subject={{ 'How did your order turn out?' | urlencode }}&body={{ rv_msg | urlencode }}" class="rc-textbtn">Email it</a>{% endif %}
         </div>
-        <p class="rc-send-note">A personal link just for {{ rv_first or 'this customer' }}. Their review comes to your Reviews page for you to approve.</p>
+        <p class="rc-send-note">A personal link just for {{ rv_first or 'this customer' }}. Their review shows on your site right away.</p>
     </div>
     {% include 'admin/partials/copy_js.html' %}
     {% elif invoice and review_done %}

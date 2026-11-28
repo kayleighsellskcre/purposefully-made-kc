@@ -19,7 +19,7 @@ def test_general_link_takes_a_review_with_an_optional_email(guest, app, seed):
     resp = guest.post('/review', data={'name': 'Tara M.', 'body': 'So soft, love them!', 'email': ''})
     assert resp.status_code == 302 and resp.headers['Location'].endswith('/review/thanks')
     row = _in_db(app, lambda: (lambda r: (r.source, r.order_id, r.status, r.body))(Review.query.first()))
-    assert row == ('general', None, 'pending', 'So soft, love them!')
+    assert row == ('general', None, 'approved', 'So soft, love them!')
     assert 'Thank You' in guest.get('/review/thanks').get_data(as_text=True)
 
 
@@ -114,3 +114,9 @@ def test_finished_admin_orders_hide_cancel_and_proof(admin_client, app, seed):
     done = _in_db(app, lambda: make('picked_up'))
     page = admin_client.get(f'/admin/orders/{done}').get_data(as_text=True)
     assert 'Cancel this order' not in page and 'od-proof-card' not in page
+
+
+def test_a_new_review_shows_on_the_homepage_right_away(guest, app, seed):
+    guest.get('/')                                     # warm the cached list first
+    guest.post('/review', data={'name': 'Tara M.', 'body': 'Our team shirts are perfect!'})
+    assert 'Our team shirts are perfect!' in guest.get('/').get_data(as_text=True)
