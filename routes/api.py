@@ -290,30 +290,6 @@ def upload_design():
     })
 
 
-@api_bp.route('/generate-proof', methods=['POST'])
-def generate_proof():
-    """Generate proof image of design on product"""
-    data = request.get_json()
-    
-    product_id = data.get('product_id')
-    design_id = data.get('design_id')
-    color = data.get('color')
-    placement = data.get('placement')
-    specs = data.get('specs', {})
-    
-    # TODO: Implement actual mockup generation
-    # This would use PIL or a service to composite the design onto the mockup
-    
-    # For now, return placeholder
-    proof_filename = f"proof_{secrets.token_hex(8)}.png"
-    proof_path = f"uploads/proofs/{proof_filename}"
-    
-    return jsonify({
-        'success': True,
-        'proof_image': proof_path
-    })
-
-
 @api_bp.route('/products/<int:product_id>/mockup')
 def get_product_mockup(product_id):
     """Get product mockup data; when color is provided, use color-specific mockup from variant or uploads/mockups."""
