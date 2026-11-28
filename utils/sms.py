@@ -1,4 +1,4 @@
-"""Text alerts for design requests - supports email-to-SMS (no platform) or Twilio"""
+"""Text alerts for design requests - sent as email-to-SMS through your carrier"""
 # Carrier email-to-SMS gateways (no signup needed - uses your existing email)
 CARRIER_GATEWAYS = {
     'verizon': 'vtext.com',
@@ -15,14 +15,14 @@ CARRIER_GATEWAYS = {
 
 def send_design_request_alert(app, customer_name, request_id):
     """Send text to admin when a new design request is submitted.
-    Uses email-to-SMS (no platform) if carrier is set, otherwise Twilio if configured."""
+    Uses email-to-SMS (no platform)."""
     phone = ''.join(c for c in str(app.config.get('ADMIN_PHONE', '7852491464')) if c.isdigit())
     if len(phone) != 10:
         return False
     base_url = app.config.get('ADMIN_BASE_URL', 'http://localhost:5000')
     msg = f"Purposefully Made KC: New design request from {customer_name}! View: {base_url}/admin/custom-design-requests/{request_id}"
 
-    # Option 1: Email-to-SMS (no extra platform - uses your existing Flask-Mail)
+    # Email-to-SMS (no extra platform - uses your existing Flask-Mail)
     carrier = app.config.get('ADMIN_PHONE_CARRIER', '').lower()
     if carrier and carrier in CARRIER_GATEWAYS and app.config.get('MAIL_SERVER'):
         try:
@@ -41,21 +41,12 @@ def send_design_request_alert(app, customer_name, request_id):
         except Exception:
             pass
 
-    # Option 2: Twilio (if configured)
-    if app.config.get('TWILIO_ACCOUNT_SID') and app.config.get('TWILIO_AUTH_TOKEN') and app.config.get('TWILIO_PHONE_NUMBER'):
-        try:
-            from twilio.rest import Client
-            client = Client(app.config['TWILIO_ACCOUNT_SID'], app.config['TWILIO_AUTH_TOKEN'])
-            client.messages.create(to='+1' + phone, from_=app.config['TWILIO_PHONE_NUMBER'], body=msg)
-            return True
-        except Exception:
-            pass
     return False
 
 
 def send_new_order_alert(app, order):
     """Send text to admin when a new order is placed.
-    Uses email-to-SMS (no platform) if carrier is set, otherwise Twilio if configured."""
+    Uses email-to-SMS (no platform)."""
     phone = ''.join(c for c in str(app.config.get('ADMIN_PHONE', '')) if c.isdigit())
     if len(phone) != 10:
         return False
@@ -74,7 +65,7 @@ def send_new_order_alert(app, order):
         f" · {base_url}/admin/orders/{order_id}"
     )
 
-    # Option 1: Email-to-SMS gateway (no extra platform)
+    # Email-to-SMS gateway (no extra platform)
     carrier = app.config.get('ADMIN_PHONE_CARRIER', '').lower()
     if carrier and carrier in CARRIER_GATEWAYS and app.config.get('MAIL_SERVER'):
         try:
@@ -90,16 +81,6 @@ def send_new_order_alert(app, order):
                 )
                 mail.send(email_msg)
                 return True
-        except Exception:
-            pass
-
-    # Option 2: Twilio
-    if app.config.get('TWILIO_ACCOUNT_SID') and app.config.get('TWILIO_AUTH_TOKEN') and app.config.get('TWILIO_PHONE_NUMBER'):
-        try:
-            from twilio.rest import Client
-            client = Client(app.config['TWILIO_ACCOUNT_SID'], app.config['TWILIO_AUTH_TOKEN'])
-            client.messages.create(to='+1' + phone, from_=app.config['TWILIO_PHONE_NUMBER'], body=msg)
-            return True
         except Exception:
             pass
 
@@ -129,12 +110,4 @@ def send_server_error_alert(app, error_id, path, message):
         except Exception:
             pass
 
-    if app.config.get('TWILIO_ACCOUNT_SID') and app.config.get('TWILIO_AUTH_TOKEN') and app.config.get('TWILIO_PHONE_NUMBER'):
-        try:
-            from twilio.rest import Client
-            client = Client(app.config['TWILIO_ACCOUNT_SID'], app.config['TWILIO_AUTH_TOKEN'])
-            client.messages.create(to='+1' + phone, from_=app.config['TWILIO_PHONE_NUMBER'], body=body)
-            return True
-        except Exception:
-            pass
     return False

@@ -143,10 +143,6 @@ class Config:
     # Option A: Email-to-SMS (no extra platform) - set ADMIN_PHONE_CARRIER (verizon, att, tmobile, sprint)
     ADMIN_PHONE = os.environ.get('ADMIN_PHONE', '7852491464')
     ADMIN_PHONE_CARRIER = os.environ.get('ADMIN_PHONE_CARRIER', '').lower()  # verizon, att, tmobile, sprint
-    # Option B: Twilio (if you prefer)
-    TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
-    TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
-    TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
     
     # Cloudflare R2 (cloud image storage - prevents image loss on server restarts)
     # Sign up at cloudflare.com → R2 Object Storage → create bucket + API token
