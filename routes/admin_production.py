@@ -570,15 +570,17 @@ def invoice_view(invoice_id):
     inv = ManualInvoice.query.get_or_404(invoice_id)
     from utils.invoice_pay import pay_url, sms_href
     link = pay_url(inv) if inv.pay_token else None
+    from models import Review
+    review_done = Review.query.filter_by(invoice_id=inv.id).first() is not None
     if not inv.review_token:                       # every invoice gets its own review link
         import secrets
         inv.review_token = secrets.token_urlsafe(24)
         db.session.commit()
-    review_link = url_for('main.review_invoice', token=inv.review_token, _external=True)
+    review_link = None if review_done else url_for('main.review_invoice', token=inv.review_token, _external=True)
     return render_template('admin/order_receipt.html', doc=doc_from_invoice(inv), business=BUSINESS,
                            payment_methods=PAYMENT_METHODS, invoice=inv, order=None,
                            pay_link=link, sms_link=sms_href(inv) if link and inv.phone else None,
-                           review_link=review_link)
+                           review_link=review_link, review_done=review_done)
 
 
 @admin_bp.route('/invoices/<int:invoice_id>/pdf')

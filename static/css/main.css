@@ -3188,8 +3188,8 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .review-form { max-width: 600px; margin: 0 auto; padding: 1.5rem 1.6rem; background: #fff; border: 1px solid rgba(232, 208, 177, 0.7); border-radius: 14px; }
 .rv-field { margin-bottom: 1.1rem; }
 .rv-field > label:first-child { display: block; margin-bottom: 0.35rem; font-weight: 700; font-size: 0.92rem; color: var(--text-primary); }
-.rv-field textarea, .rv-field input[type="text"] { width: 100%; padding: 0.7rem 0.85rem; border: 1px solid rgba(58, 61, 72, 0.25); border-radius: 10px; font: inherit; font-size: 1rem; background: #fffdfb; }
-.rv-field textarea:focus, .rv-field input[type="text"]:focus { outline: 2px solid var(--terra-cotta); outline-offset: 1px; }
+.rv-field textarea, .rv-field input[type="text"], .rv-field input[type="email"] { width: 100%; padding: 0.7rem 0.85rem; border: 1px solid rgba(58, 61, 72, 0.25); border-radius: 10px; font: inherit; font-size: 1rem; background: #fffdfb; }
+.rv-field textarea:focus, .rv-field input[type="text"]:focus, .rv-field input[type="email"]:focus { outline: 2px solid var(--terra-cotta); outline-offset: 1px; }
 .rv-field input[aria-invalid="true"], .rv-field textarea[aria-invalid="true"] { border-color: #b3261e; }
 .rv-optional { margin-left: 0.3rem; font-weight: 400; color: var(--text-secondary); }
 .rv-help { margin: 0 0 0.5rem; font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary); }

@@ -58,18 +58,22 @@
     </div>
     {% endif %}
 
-    {% if review_link and order.status != 'cancelled' %}
+    {% if review_link %}
     {%- set rv_msg = 'Hi' ~ ((' ' ~ order.first_name) if order.first_name else '') ~ '! Thank you so much for your order. If you have a minute, I would love to hear how it turned out: ' ~ review_link -%}
-    <div class="od-card" style="margin-bottom:1rem;">
-        <p style="margin:0 0 0.4rem;"><strong>Ask for a review</strong>{% if order.review_email_sent_at %} <span style="color:var(--text-secondary);font-size:0.85rem;">(review email sent {{ order.review_email_sent_at|central('%b %d') }})</span>{% endif %}</p>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
-            <input type="text" id="odReviewLink" readonly value="{{ review_link }}" aria-label="Review link" onclick="this.select()" style="flex:1 1 260px;min-width:0;padding:0.45rem 0.6rem;border:1px solid var(--border-color, #e5dccf);border-radius:8px;">
-            <button type="button" class="od-btn" onclick="var i=document.getElementById('odReviewLink');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);this.textContent='Copied!';">Copy link</button>
-            <a class="od-btn od-btn-outline" href="sms:{{ order.phone or '' }}?&body={{ rv_msg | urlencode }}">Text it</a>
-            <a class="od-btn od-btn-outline" href="mailto:{{ order.email or '' }}?subject={{ 'How did your order turn out?' | urlencode }}&body={{ rv_msg | urlencode }}">Email it</a>
+    <div class="od-card od-review-ask">
+        <div>
+            <strong>Ask for a review</strong>
+            <span class="od-review-note">{% if order.review_email_sent_at %}The review email went out {{ order.review_email_sent_at|central('%b %d') }}. Send a personal note too if you like.{% else %}The site emails this about two weeks after the order is completed.{% endif %}</span>
         </div>
-        <p style="margin:0.4rem 0 0;font-size:0.85rem;color:var(--text-secondary);">This link is just for this customer. The site also emails it about two weeks after the order is completed.</p>
+        <div class="od-review-btns">
+            <button type="button" class="od-btn" data-copy="{{ review_link }}" onclick="pmCopy(this)">Copy link</button>
+            {% if order.phone %}<a class="od-btn od-btn-outline" href="sms:{{ order.phone }}?&body={{ rv_msg | urlencode }}">Text it</a>{% endif %}
+            {% if order.email %}<a class="od-btn od-btn-outline" href="mailto:{{ order.email }}?subject={{ 'How did your order turn out?' | urlencode }}&body={{ rv_msg | urlencode }}">Email it</a>{% endif %}
+        </div>
     </div>
+    {% include 'admin/partials/copy_js.html' %}
+    {% elif review_done %}
+    <div class="od-card od-review-ask"><div><strong>Reviewed</strong> <span class="od-review-note">This customer left a review. <a href="{{ url_for('admin.reviews') }}">See reviews</a></span></div></div>
     {% endif %}
 
     {% if order.status != 'cancelled' %}
@@ -894,6 +898,9 @@
     margin-bottom: 1.25rem;
 }
 
+.od-review-ask { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem 1.25rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.od-review-ask .od-review-note { display: block; margin-top: 0.15rem; font-size: 0.85rem; color: var(--text-secondary); }
+.od-review-ask .od-review-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .od-card {
     background: #fff;
     border: 1px solid rgba(232, 208, 177, 0.6);

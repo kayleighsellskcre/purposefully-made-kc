@@ -137,8 +137,16 @@ def orders_completed():
     return render_template('admin/orders_completed.html', by_month=by_month, item_counts=item_counts_for(orders))
 
 
+def _order_reviewed(order):
+    from models import Review
+    return Review.query.filter_by(order_id=order.id).first() is not None
+
+
 def _order_review_link(order):
-    """This order's private review link (made now if it has none yet). Never sends anything."""
+    """This order's private review link once the order is done (made now if needed). Never sends anything."""
+    done = order.status in ('completed', 'shipped', 'picked_up') or order.production_stage == 'completed'
+    if not done or order.status == 'cancelled':
+        return None
     try:
         if not order.review_token:
             import secrets
@@ -227,7 +235,8 @@ def order_detail(order_id):
     return render_template(
         'admin/order_detail.html',
         order=order,
-        review_link=_order_review_link(order),
+        review_done=_order_reviewed(order),
+        review_link=None if _order_reviewed(order) else _order_review_link(order),
         proof_history=proof_tools.history(order.id),
         bulk_invoices=invoices_for_order(order) if order.payment_method == 'invoice' else [],
         get_print_width=get_print_width,

@@ -192,15 +192,15 @@ table.rc-items { width: 100%; border-collapse: collapse; }
     <div class="rc-send">
         <p class="rc-send-title">Ask for a review</p>
         <div class="rc-send-row">
-            <input type="text" id="rcReviewLink" value="{{ review_link }}" readonly aria-label="Review link">
-            <button type="button" onclick="var i=document.getElementById('rcReviewLink');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);this.textContent='Copied!';">Copy link</button>
+            <button type="button" class="rc-primary" data-copy="{{ review_link }}" onclick="pmCopy(this)">Copy review link</button>
+            {% if invoice.phone %}<a href="sms:{{ invoice.phone }}?&body={{ rv_msg | urlencode }}" class="rc-textbtn">Text it</a>{% endif %}
+            {% if invoice.email %}<a href="mailto:{{ invoice.email }}?subject={{ 'How did your order turn out?' | urlencode }}&body={{ rv_msg | urlencode }}" class="rc-textbtn">Email it</a>{% endif %}
         </div>
-        <div class="rc-send-row">
-            <a href="sms:{{ invoice.phone or '' }}?&body={{ rv_msg | urlencode }}" class="rc-textbtn">Text it</a>
-            <a href="mailto:{{ invoice.email or '' }}?subject={{ 'How did your order turn out?' | urlencode }}&body={{ rv_msg | urlencode }}" class="rc-textbtn">Email it</a>
-        </div>
-        <p class="rc-send-note">This link is just for this customer. Their review comes to your Reviews page for you to approve.</p>
+        <p class="rc-send-note">A personal link just for {{ rv_first or 'this customer' }}. Their review comes to your Reviews page for you to approve.</p>
     </div>
+    {% include 'admin/partials/copy_js.html' %}
+    {% elif invoice and review_done %}
+    <div class="rc-send"><p class="rc-send-title" style="margin:0">Reviewed</p><p class="rc-send-note">{{ (invoice.customer_name or 'This customer').split(' ')[0] }} left a review. <a href="{{ url_for('admin.reviews') }}">See reviews</a></p></div>
     {% endif %}
     {% if not invoice %}
     <details class="rc-bill"{% if doc.company or doc.attn or doc.po or doc.note or request.args.get('kind') %} open{% endif %}>

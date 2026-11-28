@@ -6,9 +6,9 @@
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
         <input type="text" readonly value="{{ rl_url }}" aria-label="{{ rl_title }}" onclick="this.select()"
                style="flex:1 1 260px;min-width:0;padding:0.5rem 0.65rem;border:1px solid var(--border-color, #e5dccf);border-radius:8px;font-size:0.9rem;">
-        <button type="button" class="btn btn-primary btn-sm" data-copy="{{ rl_url }}"
-                onclick="var b=this;navigator.clipboard&&navigator.clipboard.writeText(b.getAttribute('data-copy')).then(function(){var t=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=t},1600)});">Copy link</button>
+        <button type="button" class="btn btn-primary btn-sm" data-copy="{{ rl_url }}" onclick="pmCopy(this)">Copy link</button>
         <a class="btn btn-outline btn-sm" href="sms:{{ rl_phone or '' }}?&body={{ rl_msg | urlencode }}">Text it</a>
         <a class="btn btn-outline btn-sm" href="mailto:{{ rl_email or '' }}?subject={{ 'How did your order turn out?' | urlencode }}&body={{ rl_msg | urlencode }}">Email it</a>
     </div>
 </div>
+{% include 'admin/partials/copy_js.html' %}

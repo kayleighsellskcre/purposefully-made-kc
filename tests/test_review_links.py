@@ -51,11 +51,37 @@ def test_admin_pages_show_copyable_review_links(admin_client, app, seed):
     inv_id = _invoice(app, token=None)
     page = admin_client.get(f'/admin/invoices/{inv_id}').get_data(as_text=True)
     token = _in_db(app, lambda: db.session.get(ManualInvoice, inv_id).review_token)
-    assert token and f'/review/i/{token}' in page and 'Ask for a review' in page
+    assert token and f'/review/i/{token}' in page and 'Ask for a review' in page and 'Copy review link' in page
 
-    oid = _in_db(app, _order)
+    def finished_order():
+        oid = _order()
+        db.session.get(Order, oid).status = 'picked_up'
+        db.session.commit()
+        return oid
+    oid = _in_db(app, finished_order)
     page = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
     token = _in_db(app, lambda: db.session.get(Order, oid).review_token)
     assert token and f'/review/{token}' in page and 'Ask for a review' in page
     # making the link sends nothing
     assert _in_db(app, lambda: db.session.get(Order, oid).review_email_sent_at) is None
+
+
+def test_orders_in_progress_do_not_ask_and_reviewed_ones_say_so(admin_client, app, seed):
+    oid = _in_db(app, _order)                                   # still in progress
+    page = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
+    assert 'Ask for a review' not in page
+    assert _in_db(app, lambda: db.session.get(Order, oid).review_token) is None
+
+    def reviewed():
+        db.session.add(Review(order_id=oid, name='Amy K.', body='Love it', status='pending'))
+        db.session.get(Order, oid).status = 'picked_up'
+        db.session.commit()
+    _in_db(app, reviewed)
+    page = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
+    assert 'Ask for a review' not in page and 'This customer left a review' in page
+
+    inv_id = _invoice(app)
+    _in_db(app, lambda: (db.session.add(Review(invoice_id=inv_id, source='invoice', name='Jamie R.', status='pending')),
+                         db.session.commit()))
+    page = admin_client.get(f'/admin/invoices/{inv_id}').get_data(as_text=True)
+    assert 'Ask for a review' not in page and 'Jamie left a review' in page
