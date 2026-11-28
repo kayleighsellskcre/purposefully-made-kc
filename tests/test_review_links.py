@@ -85,3 +85,32 @@ def test_orders_in_progress_do_not_ask_and_reviewed_ones_say_so(admin_client, ap
                          db.session.commit()))
     page = admin_client.get(f'/admin/invoices/{inv_id}').get_data(as_text=True)
     assert 'Ask for a review' not in page and 'Jamie left a review' in page
+
+
+def test_customers_can_find_the_review_page_on_their_own(guest, app, seed):
+    assert '/review">Leave a Review' in guest.get('/').get_data(as_text=True)
+
+
+def test_finished_orders_offer_a_review_in_the_customer_account(app, seed):
+    from tests.test_cancel_order import _order as cust_order, _shopper
+    cust_order(app, status='paid', number='PMKC-RV1')
+    shopper = _shopper(app)
+    assert 'Leave a review' not in shopper.get('/account/orders/PMKC-RV1').get_data(as_text=True)
+    cust_order(app, status='picked_up', stage='completed', number='PMKC-RV2')
+    page = shopper.get('/account/orders/PMKC-RV2').get_data(as_text=True)
+    token = _in_db(app, lambda: Order.query.filter_by(order_number='PMKC-RV2').first().review_token)
+    assert 'Leave a review' in page and f'/review/{token}' in page
+
+
+def test_finished_admin_orders_hide_cancel_and_proof(admin_client, app, seed):
+    def make(status):
+        oid = _order()
+        db.session.get(Order, oid).status = status
+        db.session.commit()
+        return oid
+    live = _in_db(app, lambda: make('paid'))
+    page = admin_client.get(f'/admin/orders/{live}').get_data(as_text=True)
+    assert 'Cancel this order' in page and 'od-proof-card' in page
+    done = _in_db(app, lambda: make('picked_up'))
+    page = admin_client.get(f'/admin/orders/{done}').get_data(as_text=True)
+    assert 'Cancel this order' not in page and 'od-proof-card' not in page

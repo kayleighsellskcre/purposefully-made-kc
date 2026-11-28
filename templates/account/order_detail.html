@@ -27,6 +27,18 @@
             </div>
         </div>
 
+        {% if review_state[0] == 'ask' %}
+        <div class="account-form-card acct-review">
+            <div>
+                <strong>How did it turn out?</strong>
+                <p>We would love to hear from you, and photos are always welcome.</p>
+            </div>
+            <a href="{{ review_state[1] }}" class="btn btn-primary">Leave a review</a>
+        </div>
+        {% elif review_state[0] == 'done' %}
+        <div class="account-form-card acct-review"><p style="margin:0;">Thank you for your review. It truly made our day.</p></div>
+        {% endif %}
+
         {% if order.cancel_requested_at and order.status != 'cancelled' %}
         <div class="account-form-card" style="margin-bottom:1rem;">
             <p style="margin:0;">We got your cancellation request on {{ order.cancel_requested_at|central('%B %d') }}. We will email you as soon as it is cancelled and your refund is on its way.</p>

@@ -46,7 +46,7 @@
 
     {% if order.status == 'cancelled' %}
     <div class="od-card" style="margin-bottom:1rem;"><strong>This order is cancelled.</strong></div>
-    {% else %}
+    {% elif not is_done %}
     <div class="od-card" style="margin-bottom:1rem;{% if order.cancel_requested_at %}border-left:4px solid var(--terra-cotta);{% endif %}">
         {% if order.cancel_requested_at %}
         <p style="margin:0 0 0.5rem;"><strong>The customer asked to cancel</strong> on {{ order.cancel_requested_at|central('%b %d') }}{% if order.cancel_reason %}: &ldquo;{{ order.cancel_reason }}&rdquo;{% endif %}.</p>
@@ -76,7 +76,7 @@
     <div class="od-card od-review-ask"><div><strong>Reviewed</strong> <span class="od-review-note">This customer left a review. <a href="{{ url_for('admin.reviews') }}">See reviews</a></span></div></div>
     {% endif %}
 
-    {% if order.status != 'cancelled' %}
+    {% if order.status != 'cancelled' and not is_done %}
     {% set _proof = proof_history[0] if proof_history else none %}
     <div class="od-card od-proof-card" style="margin-bottom:1rem;">
         <span class="od-card-eyebrow">Optional</span>

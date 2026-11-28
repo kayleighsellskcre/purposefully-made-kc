@@ -41,7 +41,10 @@
             {% endfor %}
         </div>
 
-        <p class="kw-invite">Ordered from us? Watch for a little email after your order is complete. We would love to see you in your favorites.</p>
+        <div class="kw-invite">
+            <p>Ordered from us? We would love to see you in your favorites.</p>
+            <a href="{{ url_for('main.review_general') }}" class="btn btn-outline">Share your kind words</a>
+        </div>
         {% else %}
         <div class="kw-empty">
             <p class="kw-empty-title">Our first kind words are on their way.</p>

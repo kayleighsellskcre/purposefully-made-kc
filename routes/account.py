@@ -22,6 +22,25 @@ def orders():
     return render_template('account/orders.html', orders=orders)
 
 
+def _review_state(order):
+    """('ask', url) once a finished order has no review yet, ('done', None) after one, else (None, None)."""
+    from models import Review, db
+    done = order.status in ('completed', 'shipped', 'picked_up', 'delivered') or order.production_stage == 'completed'
+    if not done or order.status == 'cancelled':
+        return None, None
+    if Review.query.filter_by(order_id=order.id).first():
+        return 'done', None
+    try:
+        if not order.review_token:
+            import secrets
+            order.review_token = secrets.token_urlsafe(24)
+            db.session.commit()
+        return 'ask', url_for('main.review', token=order.review_token)
+    except Exception:
+        db.session.rollback()
+        return None, None
+
+
 @account_bp.route('/orders/<order_number>')
 @login_required
 def order_detail(order_number):
@@ -39,6 +58,7 @@ def order_detail(order_number):
         can_cancel=can_request_cancel(order),
         pickup_heading=group_pickup_heading(coll),
         pickup_details=group_pickup_details(coll),
+        review_state=_review_state(order),
     )
 
 
