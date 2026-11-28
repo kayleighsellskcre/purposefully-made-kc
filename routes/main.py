@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, Response, render_template, current_app, send_from_directory, request, flash, redirect, url_for
+from flask import Blueprint, abort, Response, render_template, current_app, send_from_directory, request, flash, redirect, url_for, session
 from models import Product, Collection
 from utils.rate_limit import post_only
 from utils.admin_gate import require_admin_or_404
@@ -563,7 +563,98 @@ def review_thanks(token):
     return render_template('review/thanks.html', state='thanks' if order else 'unknown')
 
 
-def _alert_owner_of_review(row, order):
+def _review_invoice(token):
+    from models import ManualInvoice
+    token = (token or '').strip()
+    if len(token) < 16:
+        return None
+    return ManualInvoice.query.filter_by(review_token=token).first()
+
+
+def _take_review(form, errors, ask_email=False):
+    """Read and check the review form. Returns (fields, urls) when it can be saved, else (None, None)."""
+    form['name'] = (request.form.get('name') or '').strip()[:80]
+    form['body'] = (request.form.get('body') or '').strip()[:2000]
+    form['photos_ok'] = bool(request.form.get('photos_ok'))
+    if ask_email:
+        form['email'] = (request.form.get('email') or '').strip()[:200]
+    files = [f for f in request.files.getlist('photos') if f and f.filename]
+    if not form['name']:
+        errors['name'] = 'Please tell us what name to show.'
+    if not form['body'] and not files:
+        errors['body'] = 'Share a few words or add a photo and we will be so happy.'
+    if ask_email and form.get('email') and '@' not in form['email']:
+        errors['email'] = 'That email does not look quite right. You can also leave it blank.'
+    if errors:
+        return None, None
+    urls, note = _save_review_photos(files)
+    if not form['body'] and not urls:
+        errors['body'] = note or 'We could not add that photo. Please try another or write a few words.'
+        return None, None
+    return form, urls
+
+
+@main_bp.route('/review', methods=['GET', 'POST'])
+def review_general():
+    """One review link for anyone: clients billed by invoice, market and pop-up buyers, anyone Kayleigh texts it to."""
+    import json
+    from models import Review, db
+    errors = {}
+    form = {'name': '', 'body': '', 'photos_ok': False, 'email': ''}
+    if request.method == 'POST':
+        if (request.form.get('website') or '').strip():          # a robot filled the hidden field
+            return redirect(url_for('main.review_general_thanks'))
+        sent = session.get('general_reviews_sent', 0)
+        if sent >= 3:
+            return redirect(url_for('main.review_general_thanks'))
+        fields, urls = _take_review(form, errors, ask_email=True)
+        if fields:
+            row = Review(order_id=None, source='general', email=fields.get('email') or None, name=fields['name'],
+                         body=fields['body'] or None, photos=json.dumps(urls) if urls else None,
+                         photos_ok=bool(urls) and fields['photos_ok'], status='pending')
+            db.session.add(row)
+            db.session.commit()
+            session['general_reviews_sent'] = sent + 1
+            _alert_owner_of_review(row, None)
+            return redirect(url_for('main.review_general_thanks'))
+    return render_template('review/form.html', order=None, invoice=None, general=True, form=form, errors=errors,
+                           photo_limit=_REVIEW_PHOTO_LIMIT)
+
+
+@main_bp.route('/review/thanks')
+def review_general_thanks():
+    return render_template('review/thanks.html', state='thanks')
+
+
+@main_bp.route('/review/i/<token>', methods=['GET', 'POST'])
+def review_invoice(token):
+    """A personal review link for a side order billed by invoice."""
+    import json
+    from models import Review, db
+    invoice = _review_invoice(token)
+    if invoice is None:
+        return render_template('review/thanks.html', state='unknown'), 404
+    if Review.query.filter_by(invoice_id=invoice.id).first():
+        return render_template('review/thanks.html', state='already')
+    errors = {}
+    first = (invoice.customer_name or '').strip().split(' ')
+    form = {'name': (first[0] + (f' {first[-1][:1]}.' if len(first) > 1 else '')) if first and first[0] else '',
+            'body': '', 'photos_ok': False}
+    if request.method == 'POST':
+        fields, urls = _take_review(form, errors)
+        if fields:
+            row = Review(order_id=None, invoice_id=invoice.id, source='invoice', name=fields['name'],
+                         body=fields['body'] or None, photos=json.dumps(urls) if urls else None,
+                         photos_ok=bool(urls) and fields['photos_ok'], status='pending')
+            db.session.add(row)
+            db.session.commit()
+            _alert_owner_of_review(row, None, invoice=invoice)
+            return redirect(url_for('main.review_general_thanks'))
+    return render_template('review/form.html', order=None, invoice=invoice, general=False, form=form, errors=errors,
+                           photo_limit=_REVIEW_PHOTO_LIMIT)
+
+
+def _alert_owner_of_review(row, order, invoice=None):
     """Tell the owner a review is waiting for approval. Best effort, never blocks the customer."""
     try:
         from utils.mailer import admin_recipient
@@ -572,7 +663,9 @@ def _alert_owner_of_review(row, order):
         if not to:
             return
         _send(to, 'A new review is waiting for you', 'A new review is waiting',
-              [f'{row.name} shared a review for order {order.order_number}.',
+              [f'{row.name} shared a review for order {order.order_number}.' if order is not None else
+               (f'{row.name} shared a review for invoice {invoice.number}.' if invoice is not None
+                else f'{row.name} left a review through your review link.'),
                'It will not show on the website until you approve it.'],
               details=[('Review', (row.body or 'Photos only')[:200])],
               button={'label': 'Open reviews', 'url': url_for('admin.reviews', _external=True)})

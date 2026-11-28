@@ -1411,6 +1411,9 @@ class Review(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), index=True)
+    invoice_id = db.Column(db.Integer, index=True)            # a side order billed by invoice (ManualInvoice)
+    source = db.Column(db.String(12), default='order')        # order | invoice | general (the shareable link)
+    email = db.Column(db.String(200))                          # optional, only from the general link; never shown
     name = db.Column(db.String(80), nullable=False)
     body = db.Column(db.Text)
     photos = db.Column(db.Text)                       # JSON list of image URLs
@@ -1544,6 +1547,7 @@ class ManualInvoice(db.Model):
     payment_method = db.Column(db.String(40))             # Venmo, Cash, Check, Card, Other
     # Pay online: a private link the customer can open to pay the balance by card.
     pay_token = db.Column(db.String(64), unique=True, index=True)   # None = link is off
+    review_token = db.Column(db.String(40), index=True)   # private review link for this invoice's customer
     payment_intent_id = db.Column(db.String(200), index=True)       # the Stripe payment being collected
     card_paid_intent_id = db.Column(db.String(200))                  # the last one that was applied
     pay_link_sent_at = db.Column(db.DateTime)

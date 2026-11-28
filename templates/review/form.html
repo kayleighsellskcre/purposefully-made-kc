@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
     <div class="container">
-        <span class="eyebrow">Your Order {{ order.order_number }}</span>
+        <span class="eyebrow">{% if order %}Your Order {{ order.order_number }}{% elif invoice %}Your Order {{ invoice.number }}{% else %}Purposefully Made KC{% endif %}</span>
         <h1>How Did It Turn Out?</h1>
         <p class="lead">Thank you for letting us make this for you. A few kind words help other families and teams choose with confidence, and they truly make our day.</p>
     </div>
@@ -37,6 +37,19 @@
                 <input type="text" id="rv-name" name="name" value="{{ form.name }}" maxlength="80" autocomplete="given-name"{% if errors.name %} aria-invalid="true" aria-describedby="rv-name-err"{% endif %}>
                 {% if errors.name %}<p class="rv-error" id="rv-name-err" role="alert">{{ errors.name }}</p>{% endif %}
             </div>
+
+            {% if general %}
+            <div class="rv-field">
+                <label for="rv-email">Your email <span class="rv-optional">Optional</span></label>
+                <p class="rv-help">Only so we can say thank you. It is never shown.</p>
+                <input type="email" id="rv-email" name="email" value="{{ form.email }}" maxlength="200" autocomplete="email"{% if errors.email %} aria-invalid="true" aria-describedby="rv-email-err"{% endif %}>
+                {% if errors.email %}<p class="rv-error" id="rv-email-err" role="alert">{{ errors.email }}</p>{% endif %}
+            </div>
+            <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+                <label for="rv-website">Leave this empty</label>
+                <input type="text" id="rv-website" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            {% endif %}
 
             <button type="submit" class="btn btn-primary btn-lg">Send my review</button>
             <p class="rv-note">We read every review ourselves before it appears on the site.</p>

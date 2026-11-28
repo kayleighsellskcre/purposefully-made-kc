@@ -5,13 +5,20 @@
 <h1 class="ops-title">Reviews</h1>
 <p class="ops-subtitle">{% if pending %}{{ pending }} waiting for you.{% else %}Nothing waiting.{% endif %} Only approved reviews show on the homepage. Photos only show when the customer gave permission.</p>
 
+{% set rl_url = general_review_url %}{% set rl_title = 'Your review link' %}
+{% set rl_help = 'Send this to anyone you made something for: invoice clients, market buyers, friends. Reviews from it come here for you to approve.' %}
+{% set rl_phone = none %}{% set rl_email = none %}{% set rl_name = none %}
+{% include 'admin/partials/review_link.html' %}
+
 {% for r in reviews %}
 <div class="ops-card" style="max-width:720px;margin-bottom:0.9rem;">
     <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
         <strong>{{ r.name }}</strong>
         <span style="color:var(--text-secondary);font-size:0.85rem;">
             {{ r.status|capitalize }} &middot; {{ r.created_at|central }}
-            {% if r.order %}&middot; <a href="{{ url_for('admin.order_detail', order_id=r.order.id) }}">Order {{ r.order.order_number }}</a>{% endif %}
+            {% if r.order %}&middot; <a href="{{ url_for('admin.order_detail', order_id=r.order.id) }}">Order {{ r.order.order_number }}</a>
+            {% elif r.invoice_id %}&middot; <a href="{{ url_for('admin.invoice_view', invoice_id=r.invoice_id) }}">Invoice</a>
+            {% elif r.source == 'general' %}&middot; From your review link{% if r.email %} ({{ r.email }}){% endif %}{% endif %}
         </span>
     </div>
     {% if r.body %}<p style="margin:0.6rem 0;white-space:pre-wrap;">{{ r.body }}</p>{% endif %}

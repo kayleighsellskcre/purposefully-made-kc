@@ -374,7 +374,8 @@ def reviews():
         return redirect(url_for('admin.reviews'))
     rows = Review.query.order_by((Review.status == 'pending').desc(), Review.created_at.desc()).all()
     return render_template('admin/operations/reviews.html', reviews=rows,
-                           pending=sum(1 for r in rows if r.status == 'pending'))
+                           pending=sum(1 for r in rows if r.status == 'pending'),
+                           general_review_url=url_for('main.review_general', _external=True))
 
 
 # ===== OPERATIONS: PACKAGING SOP =====

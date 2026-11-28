@@ -186,6 +186,22 @@ table.rc-items { width: 100%; border-collapse: collapse; }
         {% endif %}
     </div>
     {% endif %}
+    {% if invoice and review_link %}
+    {%- set rv_first = (invoice.customer_name or '').split(' ')[0] -%}
+    {%- set rv_msg = 'Hi' ~ ((' ' ~ rv_first) if rv_first else '') ~ '! Thank you so much for your order. If you have a minute, I would love to hear how it turned out: ' ~ review_link -%}
+    <div class="rc-send">
+        <p class="rc-send-title">Ask for a review</p>
+        <div class="rc-send-row">
+            <input type="text" id="rcReviewLink" value="{{ review_link }}" readonly aria-label="Review link">
+            <button type="button" onclick="var i=document.getElementById('rcReviewLink');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);this.textContent='Copied!';">Copy link</button>
+        </div>
+        <div class="rc-send-row">
+            <a href="sms:{{ invoice.phone or '' }}?&body={{ rv_msg | urlencode }}" class="rc-textbtn">Text it</a>
+            <a href="mailto:{{ invoice.email or '' }}?subject={{ 'How did your order turn out?' | urlencode }}&body={{ rv_msg | urlencode }}" class="rc-textbtn">Email it</a>
+        </div>
+        <p class="rc-send-note">This link is just for this customer. Their review comes to your Reviews page for you to approve.</p>
+    </div>
+    {% endif %}
     {% if not invoice %}
     <details class="rc-bill"{% if doc.company or doc.attn or doc.po or doc.note or request.args.get('kind') %} open{% endif %}>
         <summary>Billing this to a company? Add their details</summary>
